@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using System.Collections;
+using UnityStandardAssets.ImageEffects;
 
 public class MultiPlayerCore : MonoBehaviour {
 
@@ -30,12 +31,14 @@ public class MultiPlayerCore : MonoBehaviour {
 
 			if(fpCam != null) {
 
-				//TOD_Camera tCam = fpCam.AddComponent<TOD_Camera>();
+				SunShafts shafts = fpCam.GetComponent<SunShafts>();
+
+				shafts.sunTransform = GameObject.Find("Sun").transform;
 
 				//fpCam.AddComponent<FlareLayer>();
 
 				// Add God Rays to sun
-				TOD_Rays rays = fpCam.AddComponent<TOD_Rays>();
+				//TOD_Rays rays = fpCam.AddComponent<TOD_Rays>();
 				//rays.sky = GameObject.Find("Sky Dome").GetComponent<TOD_Sky>();
 			}
 

@@ -162,8 +162,11 @@ public class Builder : MonoBehaviour {
 		collider.isTrigger = true;
 
 		// Fixes raycast position bug in UFPS
-		GameObject player = GameObject.Find ("Player");
-		vp_FPBodyAnimator fpBAnimator = player.GetComponentInChildren<vp_FPBodyAnimator>();
+//		GameObject player = GameObject.Find ("Player");
+		//GameObject player = GameObject.GetComponent<vp_FPPlayerEventHandler>();
+
+
+		vp_FPBodyAnimator fpBAnimator = transform.GetComponentInChildren<vp_FPBodyAnimator>();
 		fpBAnimator.DontUpdateCamera = true;
 
 		// Add a component that determines if touching object
