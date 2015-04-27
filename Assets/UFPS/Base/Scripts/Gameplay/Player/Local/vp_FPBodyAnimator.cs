@@ -62,6 +62,9 @@ public class vp_FPBodyAnimator : vp_BodyAnimator
 	protected Material[] m_ThirdPersonMaterials;
 	protected Material[] m_InvisiblePersonMaterials;
 
+	// JPUPDATE:  Don't update camera position. Can be used to fix raycast position bug
+	public bool DontUpdateCamera = false;
+
 
 	// --- properties ---
 
@@ -314,6 +317,8 @@ public class vp_FPBodyAnimator : vp_BodyAnimator
 	/// </summary>
 	protected virtual void UpdateCameraPosition()
 	{
+		//
+		if (DontUpdateCamera) return;
 
 		// nail camera to neck
 		FPCamera.transform.position = m_HeadLookBones[0].transform.position;
