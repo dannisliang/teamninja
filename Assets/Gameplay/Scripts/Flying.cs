@@ -44,10 +44,10 @@ public class Flying : MonoBehaviour {
 
 
 		// Set reference to high speed effect so we can trigger it later
-		speedEffect = GameObject.FindWithTag("SpeedEffect");
+		//speedEffect = GameObject.FindWithTag("SpeedEffect");
 
 		// Don't emit by default
-		speedEffect.GetComponent<ParticleEmitter>().emit = false;
+		//speedEffect.GetComponent<ParticleEmitter>().emit = false;
 
 	}
 
@@ -88,7 +88,7 @@ public class Flying : MonoBehaviour {
 		
 		// Shake camera and show speed indicators if flying fast
 		if ((forwardsVel > 9 || forwardsVel < -9)  && IsFlying ) {
-			speedEffect.GetComponent<ParticleEmitter>().emit = true;
+			//speedEffect.GetComponent<ParticleEmitter>().emit = true;
 			cam.RenderingFieldOfView =  Mathf.Lerp(cam.RenderingFieldOfView, FastFov, Speed * Time.deltaTime);
 			cam.ShakeSpeed = 2.5f;
 
@@ -102,7 +102,7 @@ public class Flying : MonoBehaviour {
 			}
 		} 
 		else {
-			speedEffect.GetComponent<ParticleEmitter>().emit = false;
+			//speedEffect.GetComponent<ParticleEmitter>().emit = false;
 			cam.RenderingFieldOfView =  Mathf.Lerp(cam.RenderingFieldOfView, StockFov, Speed * Time.deltaTime);
 			cam.ShakeSpeed = 0f;
 
@@ -124,7 +124,7 @@ public class Flying : MonoBehaviour {
 
 	void ActivateFlight () {
 
-		Debug.LogWarning ("Initiate flight");
+		//Debug.LogWarning ("Initiate flight");
 		
 		FPController.MotorFreeFly = true;
 		FPController.PhysicsGravityModifier = 0;

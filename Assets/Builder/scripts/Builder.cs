@@ -47,9 +47,22 @@ public class Builder : MonoBehaviour {
 	private GameObject prevObject;
 	private Color prevObjectColor;
 
+	// List of object names to snap to
+	private static List<string> snapObjects = new List<string>() {
+		"Snap",
+		"North",
+		"East",
+		"South",
+		"West",
+		"Ceiling"
+	};
+
 
 	// Use this for initialization
 	void Start () {
+
+		// Init Layers
+
 
 		terrainLayer = LayerMask.NameToLayer("Terrain");
 	}
@@ -165,7 +178,7 @@ public class Builder : MonoBehaviour {
 //		GameObject player = GameObject.Find ("Player");
 		//GameObject player = GameObject.GetComponent<vp_FPPlayerEventHandler>();
 
-
+		// RAYCAST FIX in MP
 		vp_FPBodyAnimator fpBAnimator = transform.GetComponentInChildren<vp_FPBodyAnimator>();
 		fpBAnimator.DontUpdateCamera = true;
 
@@ -185,8 +198,8 @@ public class Builder : MonoBehaviour {
 	void endBuildObject() {
 
 		// Reset UFPS camera movement
-		GameObject player = GameObject.Find ("Player");
-		vp_FPBodyAnimator fpBAnimator = player.GetComponentInChildren<vp_FPBodyAnimator>();
+		//GameObject player = GameObject.Find ("Player");
+		vp_FPBodyAnimator fpBAnimator = transform.GetComponentInChildren<vp_FPBodyAnimator>();
 		fpBAnimator.DontUpdateCamera = false;
 
 		// Destroy the building object
@@ -257,7 +270,7 @@ public class Builder : MonoBehaviour {
 	public static bool isFloorSnapObject(GameObject go) {
 		bool isSnap = false;
 
-		if (go.name == "Snap" || go.name == "North" || go.name == "East" || go.name == "South" || go.name == "West") {
+		if (snapObjects.Contains(go.name)) {
 			isSnap = true;
 		}
 

@@ -29,7 +29,7 @@ public class MultiPlayerCore : MonoBehaviour {
 			GameObject fpCam = GameObject.Find("FPSCamera");
 
 
-			if(fpCam != null) {
+			if(fpCam != null && fpCam.GetComponent<SunShafts>() != null) {
 
 				SunShafts shafts = fpCam.GetComponent<SunShafts>();
 
