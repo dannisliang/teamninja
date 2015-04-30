@@ -94,15 +94,19 @@ public class Builder : MonoBehaviour {
 		// Temp keycodes to init blocks
 		if (Input.GetKeyDown (KeyCode.N)) {
 			// Cache selectors, make sure object ignores raycasts, etc
-			initBuildObject(GameObject.Find("WallBuildable")); // Starting with temp cube for now
+			initBuildObject(GameObject.Find("WallBuildable"));
 		}
 		if (Input.GetKeyDown (KeyCode.B)) {
 			// Cache selectors, make sure object ignores raycasts, etc
-			initBuildObject(GameObject.Find("PillarBuildable")); // Starting with temp cube for now
+			initBuildObject(GameObject.Find("PillarBuildable"));
 		}
 		if (Input.GetKeyDown (KeyCode.M)) {
 			// Cache selectors, make sure object ignores raycasts, etc
-			initBuildObject(GameObject.Find("FloorBuildable"), true); // Starting with temp cube for now
+			initBuildObject(GameObject.Find("FloorBuildable"), true);
+		}
+		if (Input.GetKeyDown (KeyCode.L)) {
+			// Cache selectors, make sure object ignores raycasts, etc
+			initBuildObject(GameObject.Find("DoorBuildable"));
 		}
 	}
 
@@ -327,7 +331,7 @@ public class Builder : MonoBehaviour {
 				if(!ren.enabled) {
 
 					ren.enabled = true;
-					
+
 					prevObject = hit.transform.gameObject;
 					prevObjectMat = ren.material;
 					prevObjectColor = ren.material.color;
@@ -401,11 +405,19 @@ public class Builder : MonoBehaviour {
 
 		else {
 			// Doing a wall, pillar, stairs, etc
-			if (prevObject != null) {
+
+			// Instantiate a new item in place if specified
+			BuildObject obj = BuildObject.GetComponent<BuildObject> ();
+			if(obj != null && obj.ObjectOnBuild != null) {
+				Debug.LogWarning(prevObject.name);
+				GameObject newBuilding = (GameObject)Instantiate (obj.ObjectOnBuild, prevObject.transform.position, prevObject.transform.rotation);
+			}
+			// Otherwise add a texture and enable renderer to item we are looking at
+			else if(prevObject != null) {
 				prevObject.GetComponent<Renderer>().material = prevObjectMat;
 				prevObject.GetComponent<Renderer>().enabled = true;
 				prevObject.GetComponent<BoxCollider>().isTrigger = false;
-
+				
 				prevObject = null;
 			}
 		}
