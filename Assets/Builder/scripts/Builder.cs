@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using System.Collections;
+using System.Linq;
 using System.Collections.Generic;
 
 public class Builder : MonoBehaviour {
@@ -46,6 +47,10 @@ public class Builder : MonoBehaviour {
 	private Material prevObjectMat;
 	private GameObject prevObject;
 	private Color prevObjectColor;
+
+	// Store list of object raycast will collide with
+	// These are disabled whe not building to not interfere with raycasts
+	private List<BoxCollider> colliderObjects = new List<BoxCollider>();
 
 	// List of object names to snap to
 	private static List<string> snapObjects = new List<string>() {
@@ -145,6 +150,45 @@ public class Builder : MonoBehaviour {
 		if (isFloor) {
 			initFloorObject(buildItem);
 		}
+
+		// Activate any invisible objects that act as colliders for object placement
+		foreach(var co in colliderObjects) {
+			if(co != null )
+				co.enabled = true;
+		}
+	}
+
+	void endBuildObject() {
+		
+		// Reset UFPS camera movement
+		//GameObject player = GameObject.Find ("Player");
+		vp_FPBodyAnimator fpBAnimator = transform.GetComponentInChildren<vp_FPBodyAnimator>();
+		fpBAnimator.DontUpdateCamera = false;
+		
+		// Destroy the building object
+		if(BuildObject && isFloorObject){
+			Destroy(BuildObject);
+		}
+		
+		// Deactivate any invisible objects that act as colliders for object placement
+		// This ensures they don't interfere with game raycasts (ex: bullets)
+		colliderObjects = new List<BoxCollider>(); // Reset list
+		List<BuildCollider> searchObjects = GameObject.FindObjectsOfType<BuildCollider>().ToList<BuildCollider>();
+		
+		Debug.LogWarning (searchObjects.Count);
+		
+		foreach(var co in searchObjects) {
+			
+			BoxCollider box = co.gameObject.GetComponent<BoxCollider>();
+			if(box != null && box.isTrigger) {
+				box.enabled = false;
+				colliderObjects.Add(box);
+			}
+		}
+		
+		// We are no longer in building mode
+		initialBuilding = null;
+		isBuilding = false;
 	}
 
 	/// <summary>
@@ -193,23 +237,6 @@ public class Builder : MonoBehaviour {
 		Rigidbody rigidbody =  BuildObject.AddComponent<Rigidbody>();
 		rigidbody.useGravity = false;
 		rigidbody.collisionDetectionMode = CollisionDetectionMode.Continuous;
-	}
-
-	void endBuildObject() {
-
-		// Reset UFPS camera movement
-		//GameObject player = GameObject.Find ("Player");
-		vp_FPBodyAnimator fpBAnimator = transform.GetComponentInChildren<vp_FPBodyAnimator>();
-		fpBAnimator.DontUpdateCamera = false;
-
-		// Destroy the building object
-		if(BuildObject && isFloorObject){
-			Destroy(BuildObject);
-		}
-
-		// We are no longer in building mode
-		initialBuilding = null;
-		isBuilding = false;
 	}
 
 	void ShowBuildObject() {
@@ -293,7 +320,6 @@ public class Builder : MonoBehaviour {
 
 			// What are we hitting
 			if(hit.transform.gameObject.layer == obj.ShowLayer) {
-				Debug.Log("wall");
 
 				Renderer ren = hit.transform.gameObject.GetComponent<Renderer> ();
 
@@ -376,7 +402,6 @@ public class Builder : MonoBehaviour {
 		else {
 			// Doing a wall, pillar, stairs, etc
 			if (prevObject != null) {
-				Debug.Log("stick");
 				prevObject.GetComponent<Renderer>().material = prevObjectMat;
 				prevObject.GetComponent<Renderer>().enabled = true;
 				prevObject.GetComponent<BoxCollider>().isTrigger = false;
