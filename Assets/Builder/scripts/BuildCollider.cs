@@ -12,6 +12,7 @@ public class BuildCollider : MonoBehaviour {
 	};
 
 	public ColliderTypes ColliderType;
+	public bool IsOccupied;
 
 	public BuildCollider ()
 	{
