@@ -67,8 +67,6 @@ public class Builder : MonoBehaviour {
 	void Start () {
 
 		// Init Layers
-
-
 		terrainLayer = LayerMask.NameToLayer("Terrain");
 	}
 	
@@ -110,6 +108,7 @@ public class Builder : MonoBehaviour {
 		}
 	}
 
+
 	/*
 	 *  Check for mouse events
 	 */
@@ -131,11 +130,11 @@ public class Builder : MonoBehaviour {
 		if (RotateEnabled) {
 			if (Input.GetAxis ("Mouse ScrollWheel") < 0) {
 				BuildObject.transform.Rotate (Vector3.down * Time.deltaTime * RotationSpeed);
-			} else if (Input.GetAxis ("Mouse ScrollWheel") > 0) {
+			} 
+			else if (Input.GetAxis ("Mouse ScrollWheel") > 0) {
 				BuildObject.transform.Rotate (Vector3.up * Time.deltaTime * RotationSpeed);
 			}
 		}
-
 	}
 
 	void initBuildObject(GameObject buildItem, bool isFloor = false) {
@@ -157,8 +156,9 @@ public class Builder : MonoBehaviour {
 
 		// Activate any invisible objects that act as colliders for object placement
 		foreach(var co in colliderObjects) {
-			if(co != null )
+			if(co != null ) {
 				co.enabled = true;
+			}
 		}
 	}
 
@@ -167,7 +167,10 @@ public class Builder : MonoBehaviour {
 		// Reset UFPS camera movement
 		//GameObject player = GameObject.Find ("Player");
 		vp_FPBodyAnimator fpBAnimator = transform.GetComponentInChildren<vp_FPBodyAnimator>();
-		fpBAnimator.DontUpdateCamera = false;
+
+		if (fpBAnimator != null) {
+			fpBAnimator.DontUpdateCamera = false;
+		}
 		
 		// Destroy the building object
 		if(BuildObject && isFloorObject){
@@ -178,8 +181,6 @@ public class Builder : MonoBehaviour {
 		// This ensures they don't interfere with game raycasts (ex: bullets)
 		colliderObjects = new List<BoxCollider>(); // Reset list
 		List<BuildCollider> searchObjects = GameObject.FindObjectsOfType<BuildCollider>().ToList<BuildCollider>();
-		
-		Debug.LogWarning (searchObjects.Count);
 		
 		foreach(var co in searchObjects) {
 			
@@ -228,7 +229,9 @@ public class Builder : MonoBehaviour {
 
 		// RAYCAST FIX in MP
 		vp_FPBodyAnimator fpBAnimator = transform.GetComponentInChildren<vp_FPBodyAnimator>();
-		fpBAnimator.DontUpdateCamera = true;
+		if(fpBAnimator != null) {
+			fpBAnimator.DontUpdateCamera = true;
+		}
 
 		// Add a component that determines if touching object
 		BuildingCollision buildCollider = BuildObject.AddComponent<BuildingCollision>();
@@ -268,13 +271,14 @@ public class Builder : MonoBehaviour {
 		{
 			Vector3 hitPosition = hit.point;
 
-			// Test
+			// Move object to the hit position
 			BuildObject.transform.position = hitPosition;
 
 			int hitLayer = hit.transform.gameObject.layer;
-			LayerMask hitMask = (1 << hit.transform.gameObject.layer);
+			//LayerMask hitMask = (1 << hit.transform.gameObject.layer);
 			isFloorPosition = isFloorSnapObject(hit.transform.gameObject);
 
+			// If terrain or floow, move to vector
 			if(hitLayer == terrainLayer || hitLayer == LayerMask.NameToLayer("Floor") && !isFloorPosition) {
 
 				Vector3 objectPosition = getObjectPosition(hit, BuildObject);
@@ -314,13 +318,14 @@ public class Builder : MonoBehaviour {
 		
 		Camera cam = Camera.main;
 		Ray ray = cam.ScreenPointToRay(Input.mousePosition);
+		canPlaceObject = false; // Reset valid state
 		
 		BuildObject obj = BuildObject.GetComponent<BuildObject> ();
 
 		if (Physics.Raycast(ray, out hit, MaxBuildDistance, ~obj.IgnoreLayers))
 		{
 			int hitLayer = hit.transform.gameObject.layer;
-			LayerMask hitMask = (1 << hit.transform.gameObject.layer);
+			//LayerMask hitMask = (1 << hit.transform.gameObject.layer);
 
 			// What are we hitting
 			if(hit.transform.gameObject.layer == obj.ShowLayer) {
@@ -344,6 +349,9 @@ public class Builder : MonoBehaviour {
 					if(collider) {
 						collider.isTrigger = true;
 					}
+
+					// Let placement know we're good
+					canPlaceObject = true;
 				}
 			}
 		}
@@ -362,7 +370,7 @@ public class Builder : MonoBehaviour {
 		// from transform to render distance. Used for offset if transform point is not in the middle
 		float pointDistance = Vector3.Distance(buildObject.transform.position, renCenter);
 		// Prevent minor collisions
-		float noColl = 0.0001f;
+		float noColl = 0.01f;
 
 		newPosition.x = (Mathf.Floor(newPosition.x / GridWidth)) * GridWidth;
 		newPosition.y = newPosition.y + totalBounds.extents.y + pointDistance + noColl;
@@ -375,23 +383,29 @@ public class Builder : MonoBehaviour {
 	/// Create the building and stop build
 	/// </summary>
 	private void ConfirmBuild(){
+
+		if (!canPlaceObject) {
+			Debug.LogWarning("No Building");
+			return;
+		}
+
 		if (canPlaceObject && isFloorObject) {
 
 //			ObjectOnBuild
 			BuildObject obj = BuildObject.GetComponent<BuildObject> ();
 
-			GameObject newBuilding;
-
-			if(obj.ObjectOnBuild) {
-				newBuilding = (GameObject)Instantiate (obj.ObjectOnBuild, BuildObject.transform.position, BuildObject.transform.rotation);
-			}
-			else {
-				newBuilding = (GameObject)Instantiate (initialBuilding, BuildObject.transform.position, BuildObject.transform.rotation);
-			}
+//			GameObject newBuilding;
+//
+//			if(obj.ObjectOnBuild) {
+			//  newBuilding = (GameObject)Instantiate (obj.ObjectOnBuild, BuildObject.transform.position, BuildObject.transform.rotation);
+//			}
+//			else {
+			//	newBuilding = (GameObject)Instantiate (initialBuilding, BuildObject.transform.position, BuildObject.transform.rotation);
+//			}
 
 
 			// Create collision for newly placed object
-			AddCollider (newBuilding);
+			//AddCollider (newBuilding);
 
 //
 //			if(builtFX){
@@ -399,13 +413,26 @@ public class Builder : MonoBehaviour {
 //			}
 //
 			// Fire Off Any Callbacks
-			newBuilding.SendMessage ("OnBuilt", SendMessageOptions.DontRequireReceiver);    
-			
+			//newBuilding.SendMessage ("OnBuilt", SendMessageOptions.DontRequireReceiver);    
+
+
+			// Network Enbled
+			PhotonView pv = transform.GetComponent<PhotonView>();
+			if(obj.ObjectOnBuild) {
+
+				pv.RPC("PlaceObject", PhotonTargets.All, obj.ObjectOnBuild.name, BuildObject.transform.position, BuildObject.transform.rotation);
+				//newBuilding = GameObject.Instantiate (obj.ObjectOnBuild, BuildObject.transform.position, BuildObject.transform.rotation);
+			}
+			else {
+				pv.RPC("PlaceObject", PhotonTargets.All, initialBuilding.name, BuildObject.transform.position, BuildObject.transform.rotation);
+				//newBuilding = GameObject.Instantiate (initialBuilding, BuildObject.transform.position, BuildObject.transform.rotation);
+			}
 		} 
 
 		else {
 			// Doing a wall, pillar, stairs, etc
-
+			Debug.LogWarning("Wall Build");
+			Debug.LogWarning(prevObject.name);
 			// Instantiate a new item in place if specified
 			BuildObject obj = BuildObject.GetComponent<BuildObject> ();
 			if(obj != null && obj.ObjectOnBuild != null) {
@@ -420,6 +447,19 @@ public class Builder : MonoBehaviour {
 				
 				prevObject = null;
 			}
+		}
+	}
+
+	[RPC]
+	public void PlaceObject(string objectName, Vector3 pos, Quaternion rot) {
+
+		// Place object in world
+		GameObject newBuilding = (GameObject)Instantiate (GameObject.Find(objectName), pos, rot);
+
+		// Add collision to the newly created item			
+		if (newBuilding != null) {
+			Debug.Log ("placed");
+			AddCollider(newBuilding);
 		}
 	}
 
@@ -445,7 +485,7 @@ public class Builder : MonoBehaviour {
 			canPlaceObject = false;
 		}
 
-		// Temp fix
+		// Temp fix that always allows objects that are snapped ot be placed
 		if (isSnap) {
 			canPlaceObject = true;
 		}

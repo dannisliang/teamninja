@@ -44,9 +44,6 @@ public class MultiPlayerCore : MonoBehaviour {
 
 
 			RaysAdded = true;
-			Debug.LogWarning("Added Rays");
-
-
 
 //			if (!PhotonNetwork.isMasterClient)
 
@@ -60,9 +57,4 @@ public class MultiPlayerCore : MonoBehaviour {
 
 	}
 
-	// On Spawn
-	void OnMessage_Spawn()
-	{
-		Debug.LogWarning ("Spawn");
-	}
 }

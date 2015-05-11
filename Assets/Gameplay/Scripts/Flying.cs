@@ -84,6 +84,12 @@ public class Flying : MonoBehaviour {
 		
 		// todo : cache
 		GameObject camObj = GameObject.Find ("FPSCamera");
+		if (camObj == null) {
+			camObj = Camera.main.gameObject;
+		}
+		if (camObj == null) {
+			return;
+		}
 		vp_FPCamera cam = camObj.GetComponent<vp_FPCamera>();
 		
 		// Shake camera and show speed indicators if flying fast
