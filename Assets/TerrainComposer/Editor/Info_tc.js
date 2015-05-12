@@ -15,7 +15,11 @@ class Info_tc extends EditorWindow
 	static function ShowWindow () 
 	{
     	var window = EditorWindow.GetWindow (Info_tc);
+    	#if UNITY_3_4 || UNITY_3_5 || UNITY_4_0 || UNITY_4_01 || UNITY_4_2 || UNITY_4_3 || UNITY_4_4 || UNITY_4_5 || UNITY_4_6 || UNITY_5_0
         window.title = "Update";
+        #else
+        window.titleContent = new GUIContent("Update");
+        #endif
     }
     
     function OnDisable()
@@ -28,16 +32,18 @@ class Info_tc extends EditorWindow
     
  	function OnGUI()
 	{
-		if (global_script.tex1 && backgroundActive)
-        {
-	       	GUI.color = backgroundColor;
-	       	EditorGUI.DrawPreviewTexture(Rect(0,0,position.width,position.height),global_script.tex1);
-	       	GUI.color = UnityEngine.Color.white;
-	    }
-	    else
-	    {
-	    	global_script.tex1 = new Texture2D(1,1);
-	    }
+//		if (global_script.tex1)
+//        {
+//        	if (backgroundActive) {
+//		       	GUI.color = backgroundColor;
+//		       	EditorGUI.DrawPreviewTexture(Rect(0,0,position.width,position.height),global_script.tex1);
+//		       	GUI.color = UnityEngine.Color.white;
+//		    }
+//	    }
+//	    else
+//	    {
+//	    	global_script.tex1 = new Texture2D(1,1);
+//	    }
 		
 		GUI.color = Color.white;
 		

@@ -28,6 +28,10 @@ public class MultiPlayerCore : MonoBehaviour {
 			// Add flare layer for sun flare to show up
 			GameObject fpCam = GameObject.Find("FPSCamera");
 
+			//GameObject water = GameObject.Find("SUIMONO_Module");
+
+
+
 
 			if(fpCam != null && fpCam.GetComponent<SunShafts>() != null) {
 

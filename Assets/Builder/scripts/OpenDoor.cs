@@ -3,16 +3,18 @@ using System.Collections;
 
 public class OpenDoor : MonoBehaviour {
 
-	public float smooth = 1.0f;
+	public float smooth = 2.0f;
 	public float DoorOpenAngle = 90.0f;
 	private bool open;
 	private bool enter;
+	private bool doorSet = false;
 
 	private Vector3 defaultRot;
 	private Vector3 openRot;
 
 	private GameObject door;
 	private GameObject hinge;
+
 
 
 	// Use this for initialization
@@ -43,12 +45,33 @@ public class OpenDoor : MonoBehaviour {
 
 	void OnTriggerEnter (Collider col) {
 		Debug.LogWarning ("enter");
-		open = true;
+
+		if (!doorSet) {
+			defaultRot = door.transform.eulerAngles;
+
+			float newRotation = defaultRot.y + DoorOpenAngle;
+			if(newRotation > 360) {
+				newRotation = 270;
+				Debug.LogWarning("oops");
+			}
+
+			openRot = new Vector3 (defaultRot.x, newRotation, defaultRot.z);
+			Debug.LogWarning(defaultRot);
+
+			// Don't need to calc again
+			doorSet = true;
+		}
+
+		if(col.gameObject.tag == "Player") {
+			open = true;
+		}
+
 	}
 
 	void OnTriggerExit (Collider col) {
-		Debug.LogWarning ("Exit");
-		open = false;
+		if(col.gameObject.tag == "Player") {
+			open = false;
+		}
 	}
 
 	void checkAndSetDoor() {

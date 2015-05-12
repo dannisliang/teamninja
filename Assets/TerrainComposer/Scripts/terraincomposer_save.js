@@ -1,4 +1,4 @@
- #pragma strict 
+#pragma strict 
 import System.Collections.Generic;
 import System;
 import System.IO;
@@ -52,6 +52,7 @@ enum image_mode_enum{Terrain,MultiTerrain,Area}
 enum export_mode_enum{Image,Raw}
 enum curve_type_enum{Normal,Random,Perlin}
 enum select_mode_enum {free,select}
+enum SliderMode_Enum {One,MinMax}
 
 var Combine_Children: GameObject;
 var software_version: String = "Beta";
@@ -108,6 +109,7 @@ var current_filter: filter_class;
 var current_subfilter: subfilter_class;
 
 var terrain_text: String = "Terrain:";
+var masterTerrain: terrain_class;
 var terrains: List.<terrain_class> = new List.<terrain_class>();
 var raw_path: String = String.Empty;
 var raw_save_path: String = String.Empty;
@@ -777,11 +779,37 @@ function layer_sort(prelayer: prelayer_class,description_number: int)
 	}
 }
 
+function LayerSort(prelayer: prelayer_class,layerGroupIndex: int)
+{
+	var layerGroup: description_class = prelayer.predescription.description[layerGroupIndex];
+	var layer1: layer_class;
+	var layer2: layer_class;
+	
+	var index: int = -1;
+	var rank1: int;
+	var rank2: int;
+	
+	for (var i: int = 1;i < layerGroup.layer_index.Count;++i) {
+		layer1 = prelayer.layer[layerGroup.layer_index[i]];
+		layer2 = prelayer.layer[layerGroup.layer_index[i-1]];
+		
+		rank1 = layer1.output;
+		rank2 = layer2.output;
+		
+		if (rank1 < rank2) {
+			swap_layer(prelayer,prelayer.predescription.description[layerGroupIndex].layer_index[i],prelayer,prelayer.predescription.description[layerGroupIndex].layer_index[i-1],false);
+			if (index == -1) index = i;
+			if (i > 1) i -= 2; else {i = index;index = -1;}
+		}
+		else if (index != -1) {i = index;index = -1;}
+	} 
+}
+
 function layers_sort(prelayer: prelayer_class)
 {
 	for (var count_description: int = 0;count_description < prelayer.predescription.description.Count;++count_description)
 	{
-		layer_sort(prelayer,count_description);
+		LayerSort(prelayer,count_description);
 	}
 }
 
@@ -1561,13 +1589,13 @@ function clear_meshes()
 
 function clear_terrain_list(deleteTerrainHierarchy: boolean) 
 {
-	for (var count_terrain: int = 0;count_terrain < terrains.Count;++count_terrain) {
+	for (var i: int = 0;i < terrains.Count;++i) {
 		if (deleteTerrainHierarchy) {
-			DeleteTerrain(terrains[count_terrain]);
+			DeleteTerrain(terrains[i]);
 		}
-		if (count_terrain > 0) {
-			terrains.RemoveAt(count_terrain);
-			--count_terrain;	
+		if (i > 0) {
+			terrains.RemoveAt(i);
+			--i;	
 		}
 	}
 }
@@ -2043,6 +2071,7 @@ function random_color_from_range(color_start: Color,color_end: Color): Color
 	color_new.r = curve_r.Evaluate(random_range);
 	color_new.g = curve_g.Evaluate(random_range);
 	color_new.b = curve_b.Evaluate(random_range);
+	color_new.a = 1;
 	return color_new;
 }
 
@@ -2403,6 +2432,7 @@ function generate_begin(): int
 			if (terrains[count_terrain].splat_length < terrains[0].splat_length){preterrain = terrains[count_terrain];return -7;}
 				
 			terrains[count_terrain].splat = new float[terrains[count_terrain].splat_length];
+			terrains[count_terrain].splat_calc = new float[terrains[count_terrain].splat_length];
 			terrains[count_terrain].splat_layer = new float[Mathf.Ceil(terrains[count_terrain].splat_length/4.0)*4.0];
 		}
 		
@@ -2664,6 +2694,7 @@ function generate_output(prelayer3: prelayer_class): int
 	
 	frames = 1/(Time.realtimeSinceStartup-auto_speed_time);
  	auto_speed_time = Time.realtimeSinceStartup;
+ 	generate_speed = 10000;
  	
  	break_x = false; 
  	row_object_count = 0;
@@ -3053,6 +3084,7 @@ function generate_output(prelayer3: prelayer_class): int
 								grass_total += preterrain.grass[count_grass];
 								grass_detail[count_grass].detail[detailmap_y,detailmap_x] += preterrain.grass[count_grass]*settings.grass_density;
 								if (grass_detail[count_grass].detail[detailmap_y,detailmap_x] < 0) grass_detail[count_grass].detail[detailmap_y,detailmap_x] = 0;
+								else if (grass_detail[count_grass].detail[detailmap_y,detailmap_x] > 16) grass_detail[count_grass].detail[detailmap_y,detailmap_x] = 16;
 							}
 							if (current_layer.nonOverlap && grass_total > 0) overlap = true;
 						}
@@ -3119,7 +3151,7 @@ function generate_output(prelayer3: prelayer_class): int
 							position = Vector3(x,0,counter_y);
 							// var position_random: Vector3;
 							var position_start: Vector3 = current_object.position_start;
-							var position_end: Vector3 = current_object.position_end;
+							var position_end: Vector3 = current_object.position_end; 
 							var position_random: Vector3;
 							
 							position_random.x = UnityEngine.Random.Range(position_start.x,position_end.x);
@@ -3132,6 +3164,13 @@ function generate_output(prelayer3: prelayer_class): int
 							}
 							
 							position += position_random;
+							
+							// Debug.Log(preterrain.prearea.area);
+							if (settings.showTerrains) {
+								if (!preterrain.prearea.area.Contains(Vector2(position.x,position.z))) continue;
+							}
+							else 
+								if (!premesh.area.Contains(Vector2(position.x,position.z))) continue;
 							
 							if (current_object.terrain_rotate) {
 								var rotation1: Vector3 = preterrain.terrain.terrainData.GetInterpolatedNormal(((local_x_rot+position_random.x)/preterrain.size.x),((local_y_rot+position_random.y)/preterrain.size.z));
@@ -3156,12 +3195,14 @@ function generate_output(prelayer3: prelayer_class): int
 							if (current_object.look_at_parent) {
 								rotation.y = Quaternion.LookRotation(Vector3(prelayer3.prearea.area.center.x,0,prelayer3.prearea.area.center.y)-position).eulerAngles.y;
 							}
-									
+								
 							if (current_object.rotation_steps)
 							{
-								if (current_object.rotation_step.x != 0){rotation.x = Mathf.Round(rotation.x/current_object.rotation_step.x)*current_object.rotation_step.x;}
-								if (current_object.rotation_step.y != 0){rotation.y = Mathf.Round(rotation.y/current_object.rotation_step.y)*current_object.rotation_step.y;}
-								if (current_object.rotation_step.z != 0){rotation.z = Mathf.Round(rotation.z/current_object.rotation_step.z)*current_object.rotation_step.z;}
+								var rotation2: Vector3 = rotation.eulerAngles;
+								if (current_object.rotation_step.x != 0){rotation2.x = Mathf.Round(rotation2.x/current_object.rotation_step.x)*current_object.rotation_step.x;}
+								if (current_object.rotation_step.y != 0){rotation2.y = Mathf.Round(rotation2.y/current_object.rotation_step.y)*current_object.rotation_step.y;}
+								if (current_object.rotation_step.z != 0){rotation2.z = Mathf.Round(rotation2.z/current_object.rotation_step.z)*current_object.rotation_step.z;}
+								rotation.eulerAngles = rotation2;
 							}	
 									
 							if (current_layer.object_output.group_rotation)
@@ -3431,7 +3472,7 @@ function generate_output(prelayer3: prelayer_class): int
 						case layer_output_enum.heightmap:
 							if (!button_export)
 							{
-								heights[heightmap_y,heightmap_x] += filter_value*current_layer.strength;
+								heights[heightmap_y,heightmap_x] += subfilter_value*filter_value*current_layer.strength;
 							}
 							break;	
 						}
@@ -3559,39 +3600,23 @@ function generate_output(prelayer3: prelayer_class): int
 					}
 				}
 			}
-			if (auto_speed)
+			
+			if (Time.realtimeSinceStartup-auto_speed_time > (1.0/target_frame))
 			{
-				if (Time.realtimeSinceStartup-auto_speed_time > (1.0/target_frame))
-				{
-					// Debug.Log("Generate Frame: "+1/(Time.realtimeSinceStartup-auto_speed_time));
-					prelayer3.break_x_value = (prelayer3.x-prelayer3.prearea.area.x)+prelayer3.prearea.step.x;
-					
-					row_object_count = 0;
-					break_x = true;
-					prelayer3.y = prelayer3.counter_y;
-					generate_time = Time.realtimeSinceStartup - generate_time_start;
-					
-					generate_error = false;
-					//Debug.Log("return frame");
-					return 4;
-				}
-				else {
-					// Debug.Log("Loop Frame: "+1/(Time.realtimeSinceStartup-auto_speed_time));
-				}
-			} 
-			else if (row_object_count > object_speed)
-			{
-				// Debug.Log("break x!: "+row_object_count+" object speed: "+object_speed);
+				// Debug.Log("Generate Frame: "+1/(Time.realtimeSinceStartup-auto_speed_time));
 				prelayer3.break_x_value = (prelayer3.x-prelayer3.prearea.area.x)+prelayer3.prearea.step.x;
-										
+				
 				row_object_count = 0;
 				break_x = true;
 				prelayer3.y = prelayer3.counter_y;
 				generate_time = Time.realtimeSinceStartup - generate_time_start;
-				object_frames = 1/(Time.realtimeSinceStartup-auto_speed_object_time);
-				auto_speed_object_time = Time.realtimeSinceStartup;
+				
 				generate_error = false;
+				//Debug.Log("return frame");
 				return 4;
+			}
+			else {
+				// Debug.Log("Loop Frame: "+1/(Time.realtimeSinceStartup-auto_speed_time));
 			}
 		} 
 		prelayer3.break_x_value = 0;
@@ -3723,10 +3748,14 @@ function calc_filter_value(filter: filter_class,counter_y: float,x: float)
 				
 			// splatmap filter
 			case condition_type_enum.Splatmap:
-				if (filter.splatmap < preterrain.splat_alpha.Length) {
+				if (splat_output) {
+					filter_input = preterrain.splat_layer[filter.splat_index];
+					if (filter_input < filter.curve_position) filter_input = 0;
+				}
+				else if (filter.splatmap < preterrain.splat_alpha.Length) {
 					color = preterrain.splat_alpha[filter.splatmap].GetPixel(map_x,map_y);
 					filter_input = color[filter.splat_index-(filter.splatmap*4)];
-					
+					if (filter_input < filter.curve_position) filter_input = 0;
 				}
 				else {
 					filter_input = 1;
@@ -3751,7 +3780,7 @@ function calc_filter_value(filter: filter_class,counter_y: float,x: float)
 				}
 				else if (filter.raycast_mode == raycast_mode_enum.Height) {
 					if (Physics.Raycast (Vector3(x+(prelayer.prearea.step.x/2),filter.cast_height,prelayer.counter_y),filter.ray_direction,hit,filter.ray_length,filter.layerMask)) {
-					layerHit = Mathf.Pow(2,hit.transform.gameObject.layer);
+						layerHit = Mathf.Pow(2,hit.transform.gameObject.layer);
 						if (layerHit &  filter.layerMask) {
 							filter_input = hit.point.y/preterrain.terrain.terrainData.size.y;
 						} 
@@ -3794,8 +3823,10 @@ function calc_filter_value(filter: filter_class,counter_y: float,x: float)
 				if (!filter.precurve_list[count_curve].abs){filter_input += UnityEngine.Random.Range(-range,range);} else {filter_input += UnityEngine.Random.Range(0,range);}
 				break;
 			case curve_type_enum.Perlin:
+				var pos: Vector2;
+				if (filter.precurve_list[count_curve].rotation) pos = calc_rotation_pixel(x,counter_y,0,0,-filter.precurve_list[count_curve].rotation_value); else pos = new Vector2(x,counter_y);
 				value0 = filter.precurve_list[count_curve].curve.Evaluate(filter_input);
-				range = perlin_noise(prelayer.x,prelayer.counter_y,filter.precurve_list[count_curve].offset.x,filter.precurve_list[count_curve].offset.y,filter.precurve_list[count_curve].frequency,filter.precurve_list[count_curve].detail,filter.precurve_list[count_curve].detail_strength)*value0*filter.precurve_list[count_curve].strength;
+				range = perlin_noise(pos.x,pos.y,filter.precurve_list[count_curve].offset.x,filter.precurve_list[count_curve].offset.y,filter.precurve_list[count_curve].frequency,filter.precurve_list[count_curve].detail,filter.precurve_list[count_curve].detail_strength)*value0*filter.precurve_list[count_curve].strength;
 				if (!filter.precurve_list[count_curve].abs){filter_input += ((range*2)-(value0));} else {filter_input += range;}
 				break;
 		}
@@ -3836,14 +3867,35 @@ function calc_filter_value(filter: filter_class,counter_y: float,x: float)
 		if (filter_combine_start != 0) {filter_combine_start = filter_value;}
 	}
 	
-	if (!(filter.type == condition_type_enum.Image && filter.preimage.edge_blur))
-	{
-		if (current_layer.output == layer_output_enum.splat)
+	if (current_layer.output == layer_output_enum.splat) {
+		if (!(filter.type == condition_type_enum.Image && filter.preimage.edge_blur))
 		{
-			for (count_value = 0;count_value < current_layer.splat_output.splat.Count;++count_value)
-			{
-				current_layer.splat_output.splat_calc[count_value] = current_layer.splat_output.curves[count_value].curve.Evaluate(current_layer.splat_output.splat_value.curve.Evaluate(filter_input));
+//			for (count_value = 0;count_value < current_layer.splat_output.splat.Count;++count_value)
+//			{
+//				current_layer.splat_output.splat_calc[count_value] = current_layer.splat_output.curves[count_value].curve.Evaluate(current_layer.splat_output.splat_value.curve.Evaluate(filter_input));
+//			}
+			
+			for (count_value = 0;count_value < preterrain.splat.Length;++count_value) {
+				preterrain.splat_calc[count_value] = 0;
 			}
+			
+			// if (filter1.mode == filter_mode_enum.Single)
+			// {
+				// filter_input += filter_value;
+				for (count_value = 0;count_value < current_layer.splat_output.splat.Count;++count_value)
+				{
+					if (current_layer.splat_output.splat_custom[count_value].custom)
+					{
+						for (var count_value2: int = 0;count_value2 < preterrain.splat.Length;++count_value2) {
+							preterrain.splat_calc[count_value2] += current_layer.splat_output.curves[count_value].curve.Evaluate(current_layer.splat_output.splat_value.curve.Evaluate(filter_input))*(current_layer.splat_output.splat_custom[count_value].value[count_value2]/current_layer.splat_output.splat_custom[count_value].totalValue);
+						}	
+					}
+					else
+					{
+						preterrain.splat_calc[current_layer.splat_output.splat[count_value]] += current_layer.splat_output.curves[count_value].curve.Evaluate(current_layer.splat_output.splat_value.curve.Evaluate(filter_input));
+					}
+				}
+			// }
 		}
 	}
 	
@@ -3909,9 +3961,9 @@ function calc_filter_value(filter: filter_class,counter_y: float,x: float)
 			if (current_layer.output == layer_output_enum.splat)
 			{
 				if (!splatmap) {
-					for (count_value = 0;count_value < current_layer.splat_output.splat.Count;++count_value)
+					for (count_value = 0;count_value < preterrain.splat.Length;++count_value)
 					{
-						preterrain.splat[current_layer.splat_output.splat[count_value]] += current_layer.splat_output.splat_calc[count_value]*(current_layer.strength*filter_strength*subfilter_value);
+						preterrain.splat[count_value] += preterrain.splat_calc[count_value]*(current_layer.strength*filter_strength*subfilter_value);
 					}
 				}
 				else {
@@ -3949,9 +4001,9 @@ function calc_filter_value(filter: filter_class,counter_y: float,x: float)
 			if (current_layer.output == layer_output_enum.splat)
 			{
 				if (!splatmap) {
-					for(count_value = 0;count_value < current_layer.splat_output.splat.Count;++count_value)
+					for(count_value = 0;count_value < preterrain.splat.Length;++count_value)
 					{
-						preterrain.splat[current_layer.splat_output.splat[count_value]] -= current_layer.splat_output.splat_calc[count_value]*(current_layer.strength*filter_strength*subfilter_value);
+						preterrain.splat[count_value] -= preterrain.splat_calc[count_value]*(current_layer.strength*filter_strength*subfilter_value);
 					}
 				}
 				else {
@@ -4040,9 +4092,9 @@ function calc_filter_value(filter: filter_class,counter_y: float,x: float)
 					if (filter.change_mode == change_mode_enum.filter)
 					{
 						if (!splatmap) {
-							for (count_value = 0;count_value < current_layer.splat_output.splat.Count;++count_value)
+							for (count_value = 0;count_value < preterrain.splat.Length;++count_value)
 							{
-								preterrain.splat[current_layer.splat_output.splat[count_value]] = (preterrain.splat[current_layer.splat_output.splat[count_value]]*(1-(filter_strength*current_layer.strength*subfilter_value)))+(current_layer.splat_output.splat_calc[count_value]*subfilter_value*filter_strength*current_layer.strength);
+								preterrain.splat[count_value] = (preterrain.splat[count_value]*(1-(filter_strength*current_layer.strength*subfilter_value)))+(preterrain.splat_calc[count_value]*subfilter_value*filter_strength*current_layer.strength);
 							}
 						}
 						else {
@@ -4060,9 +4112,9 @@ function calc_filter_value(filter: filter_class,counter_y: float,x: float)
 							preterrain.splat_layer[count_value] = preterrain.splat_layer[count_value]*(1-(filter_strength*current_layer.strength*subfilter_value));
 						}
 						if (!splatmap) {
-							for (count_value = 0;count_value < current_layer.splat_output.splat.Count;++count_value)
+							for (count_value = 0;count_value < preterrain.splat.Length;++count_value)
 							{
-								preterrain.splat[current_layer.splat_output.splat[count_value]] += (current_layer.splat_output.splat_calc[count_value]*subfilter_value*filter_strength*current_layer.strength);
+								preterrain.splat[count_value] += (preterrain.splat_calc[count_value]*subfilter_value*filter_strength*current_layer.strength);
 							}
 						}
 						else {
@@ -4094,9 +4146,9 @@ function calc_filter_value(filter: filter_class,counter_y: float,x: float)
 			if (current_layer.output == layer_output_enum.splat)
 			{
 				if (!splatmap) {
-					for (count_value = 0;count_value < current_layer.splat_output.splat.Count;++count_value)
+					for (count_value = 0;count_value < preterrain.splat.Length;++count_value)
 					{
-						preterrain.splat[current_layer.splat_output.splat[count_value]] *= current_layer.splat_output.splat_calc[count_value]*(current_layer.strength*filter_strength*subfilter_value);
+						preterrain.splat[count_value] *= preterrain.splat_calc[count_value]*(current_layer.strength*filter_strength*subfilter_value);
 					}
 				}
 				else {
@@ -4134,9 +4186,9 @@ function calc_filter_value(filter: filter_class,counter_y: float,x: float)
 			if (current_layer.output == layer_output_enum.splat)
 			{
 				if (!splatmap) {
-					for(count_value = 0;count_value < current_layer.splat_output.splat.Count;++count_value)
+					for(count_value = 0;count_value < preterrain.splat.Length;++count_value)
 					{
-						if (current_layer.splat_output.splat_calc[count_value]*(current_layer.strength*filter_strength*subfilter_value) != 0){preterrain.splat[count_value] = preterrain.splat[count_value]/(current_layer.splat_output.splat_calc[count_value]*(current_layer.strength*filter_strength*subfilter_value));}
+						if (preterrain.splat_calc[count_value]*(current_layer.strength*filter_strength*subfilter_value) != 0){preterrain.splat[count_value] = preterrain.splat[count_value]/(preterrain.splat_calc[count_value]*(current_layer.strength*filter_strength*subfilter_value));}
 					}
 				}
 				else {
@@ -4175,9 +4227,9 @@ function calc_filter_value(filter: filter_class,counter_y: float,x: float)
 			if (current_layer.output == layer_output_enum.splat)
 			{
 				if (!splatmap) {
-					for (count_value = 0;count_value < current_layer.splat_output.splat.Count;++count_value)
+					for (count_value = 0;count_value < preterrain.splat.Length;++count_value)
 					{
-						preterrain.splat[current_layer.splat_output.splat[count_value]] += (current_layer.splat_output.splat_calc[count_value]*(current_layer.strength*filter_strength*subfilter_value))/current_layer.prefilter.filter_index.Count;
+						preterrain.splat[count_value] += (preterrain.splat_calc[count_value]*(current_layer.strength*filter_strength*subfilter_value))/current_layer.prefilter.filter_index.Count;
 					}
 				}
 				else {
@@ -4214,9 +4266,9 @@ function calc_filter_value(filter: filter_class,counter_y: float,x: float)
 			if (current_layer.output == layer_output_enum.splat)
 			{
 				if (!splatmap) {
-					for (count_value = 0;count_value < current_layer.splat_output.splat.Count;++count_value)
+					for (count_value = 0;count_value < preterrain.splat.Length;++count_value)
 					{
-						preterrain.splat[current_layer.splat_output.splat[count_value]] = Mathf.Abs(preterrain.splat[count_value]-(current_layer.splat_output.splat_calc[count_value]*(current_layer.strength*filter_strength*subfilter_value)));
+						preterrain.splat[count_value] = Mathf.Abs(preterrain.splat[count_value]-(preterrain.splat_calc[count_value]*(current_layer.strength*filter_strength*subfilter_value)));
 					}
 				}
 				else {
@@ -4238,10 +4290,10 @@ function calc_filter_value(filter: filter_class,counter_y: float,x: float)
 			
 		// max filter
 		case condition_output_enum.max:
-			if (filter_input*filter_strength > filter_value)
+			if (filter_input*filter_strength*subfilter_value > filter_value)
 			{
 				if (current_layer.output == layer_output_enum.heightmap){filter_value = filter_input*filter_strength*subfilter_value;}
-					else {filter_value = filter_input;}
+					// else {filter_value = filter_input;}
 				
 				if (filter.combine) {filter_combine = filter_value-filter_combine_start;return;}					
 					
@@ -4255,9 +4307,9 @@ function calc_filter_value(filter: filter_class,counter_y: float,x: float)
 				if (current_layer.output == layer_output_enum.splat)
 				{
 					if (!splatmap) {
-						for (count_value = 0;count_value < current_layer.splat_output.splat.Count;++count_value)
+						for (count_value = 0;count_value < preterrain.splat.Length;++count_value)
 						{
-							preterrain.splat[current_layer.splat_output.splat[count_value]] = current_layer.splat_output.splat_calc[count_value]*(current_layer.strength*filter_strength*subfilter_value);
+							preterrain.splat[count_value] = preterrain.splat_calc[count_value]*(current_layer.strength*filter_strength*subfilter_value);
 						}
 					}
 					else {
@@ -4268,7 +4320,7 @@ function calc_filter_value(filter: filter_class,counter_y: float,x: float)
 						}
 					}
 				}
-				else if (current_layer.output == layer_output_enum.grass)
+				if (current_layer.output == layer_output_enum.grass)
 				{
 					for (count_value = 0;count_value < current_layer.grass_output.grass.Count;++count_value)
 					{
@@ -4280,7 +4332,7 @@ function calc_filter_value(filter: filter_class,counter_y: float,x: float)
 		
 		// min filter
 		case condition_output_enum.min:
-			if (filter_input*filter_strength < filter_value)
+			if (filter_input*filter_strength*subfilter_value < filter_value)
 			{
 				if (current_layer.output == layer_output_enum.heightmap){filter_value = filter_input*filter_strength*subfilter_value;}
 					else {filter_value = filter_input;}
@@ -4297,9 +4349,9 @@ function calc_filter_value(filter: filter_class,counter_y: float,x: float)
 				if (current_layer.output == layer_output_enum.splat)
 				{
 					if (!splatmap) {
-						for (count_value = 0;count_value < current_layer.splat_output.splat.Count;++count_value)
+						for (count_value = 0;count_value < preterrain.splat.Length;++count_value)
 						{
-							preterrain.splat[current_layer.splat_output.splat[count_value]] = current_layer.splat_output.splat_calc[count_value]*(current_layer.strength*filter_strength*subfilter_value);
+							preterrain.splat[count_value] = preterrain.splat_calc[count_value]*(current_layer.strength*filter_strength*subfilter_value);
 						}
 					}
 					else {
@@ -4407,9 +4459,14 @@ function calc_subfilter_value(filter: filter_class,subfilter: subfilter_class,co
 			
 		// splatmap subfilter
 		case condition_type_enum.Splatmap:
-			if (subfilter.splatmap < preterrain.splat_alpha.Length) {
+			if (splat_output) {
+				subfilter_input = preterrain.splat_layer[subfilter.splat_index];
+				if (subfilter_input < subfilter.curve_position) subfilter_input = 0;
+			}
+			else if (subfilter.splatmap < preterrain.splat_alpha.Length) {
 				color = preterrain.splat_alpha[subfilter.splatmap].GetPixel(map_x,map_y);
 				subfilter_input = color[subfilter.splat_index-(subfilter.splatmap*4)];
+				if (subfilter_input < subfilter.curve_position) subfilter_input = 0;
 			} 
 			else {
 				subfilter_input = 1;
@@ -4463,8 +4520,10 @@ function calc_subfilter_value(filter: filter_class,subfilter: subfilter_class,co
 				if (!subfilter.precurve_list[count_curve].abs){subfilter_input += UnityEngine.Random.Range(-range,range);} else {subfilter_input += UnityEngine.Random.Range(0,range);}
 				break;
 			case curve_type_enum.Perlin:
+				var pos: Vector2;
+				if (subfilter.precurve_list[count_curve].rotation) pos = calc_rotation_pixel(x,counter_y,0,0,-subfilter.precurve_list[count_curve].rotation_value); else pos = new Vector2(x,counter_y);
 				value0 = subfilter.precurve_list[count_curve].curve.Evaluate(subfilter_input);
-				range = perlin_noise(prelayer.x,prelayer.counter_y,subfilter.precurve_list[count_curve].offset.x,subfilter.precurve_list[count_curve].offset.y,subfilter.precurve_list[count_curve].frequency,subfilter.precurve_list[count_curve].detail,subfilter.precurve_list[count_curve].detail_strength)*value0*subfilter.precurve_list[count_curve].strength;
+				range = perlin_noise(pos.x,pos.y,subfilter.precurve_list[count_curve].offset.x,subfilter.precurve_list[count_curve].offset.y,subfilter.precurve_list[count_curve].frequency,subfilter.precurve_list[count_curve].detail,subfilter.precurve_list[count_curve].detail_strength)*value0*subfilter.precurve_list[count_curve].strength;
 				if (!subfilter.precurve_list[count_curve].abs){subfilter_input += ((range*2)-(value0));} else {subfilter_input += range;}
 				break;
 		}
@@ -4559,6 +4618,11 @@ function getRawTerrainTile(raw: raw_class)
 	if (raw.raw_number > raw.file_index.Count-1) raw.raw_number = 0; 
 }
 
+function Fraq(v: float): float
+{
+	return (v-Mathf.Floor(v));
+}
+
 
 function calc_raw_value(raw: raw_class,local_x: float,local_y: float)
 {
@@ -4572,6 +4636,8 @@ function calc_raw_value(raw: raw_class,local_x: float,local_y: float)
 	var height: float = 0;
 	var flip_x: float = 1;
 	var flip_y: float = 1;
+	
+	var rawFile: raw_file_class = raw_files[raw.file_index[raw.raw_number]];
 	
 	if (raw.flip_x){flip_x = -1;width = raw_files[raw.file_index[raw.raw_number]].resolution.x-1;} 
 	if (!raw.flip_y){flip_y = -1;height = raw_files[raw.file_index[raw.raw_number]].resolution.y-1;} 
@@ -4641,15 +4707,27 @@ function calc_raw_value(raw: raw_class,local_x: float,local_y: float)
 	var delta_pos_x: float = pos.x-pos1.x;
 	var delta_pos_y: float = pos.y-pos1.y;
 	
-	if (pos1.x < 0) {pos1.x = 0;}
-	if (pos1.x > raw_files[raw.file_index[raw.raw_number]].resolution.x-1) {pos1.x = raw_files[raw.file_index[raw.raw_number]].resolution.x-1;}
-	if (pos1.y < 0) {pos1.y = 0;}
-	if (pos1.y > raw_files[raw.file_index[raw.raw_number]].resolution.y-1) {pos1.y = raw_files[raw.file_index[raw.raw_number]].resolution.y-1;}
+//	if (pos1.x < 0) {pos1.x = 0;}
+//	if (pos1.x > raw_files[raw.file_index[raw.raw_number]].resolution.x-1) {pos1.x = raw_files[raw.file_index[raw.raw_number]].resolution.x-1;}
+//	if (pos1.y < 0) {pos1.y = 0;}
+//	if (pos1.y > raw_files[raw.file_index[raw.raw_number]].resolution.y-1) {pos1.y = raw_files[raw.file_index[raw.raw_number]].resolution.y-1;}
+//	
+//	if (pos2.x < 0) {pos2.x = 0;}
+//	if (pos2.x > raw_files[raw.file_index[raw.raw_number]].resolution.x-1) {pos2.x = raw_files[raw.file_index[raw.raw_number]].resolution.x-1;}
+//	if (pos2.y < 0) {pos2.y = 0;}
+//	if (pos2.y > raw_files[raw.file_index[raw.raw_number]].resolution.y-1) {pos2.y = raw_files[raw.file_index[raw.raw_number]].resolution.y-1;}
 	
-	if (pos2.x < 0) {pos2.x = 0;}
-	if (pos2.x > raw_files[raw.file_index[raw.raw_number]].resolution.x-1) {pos2.x = raw_files[raw.file_index[raw.raw_number]].resolution.x-1;}
-	if (pos2.y < 0) {pos2.y = 0;}
-	if (pos2.y > raw_files[raw.file_index[raw.raw_number]].resolution.y-1) {pos2.y = raw_files[raw.file_index[raw.raw_number]].resolution.y-1;}
+	if (raw.clamp) {
+		// Debug.Log(pos1);
+		if (pos1.x < 0 || pos1.x >= rawFile.resolution.x) {raw.output_pos = 0;return;}
+		if (pos1.y < 0 || pos1.y >= rawFile.resolution.y) {raw.output_pos = 0;return;}
+		if (pos2.x < 0 || pos2.x >= rawFile.resolution.x) {raw.output_pos = 0;return;}
+		if (pos2.y < 0 || pos2.y >= rawFile.resolution.y) {raw.output_pos = 0;return;}
+	}
+	else {
+		pos1 = new Vector2(Fraq(pos1.x/rawFile.resolution.x)*rawFile.resolution.x,Fraq(pos1.y/rawFile.resolution.y)*rawFile.resolution.y);
+		pos2 = new Vector2(Fraq(pos2.x/rawFile.resolution.x)*rawFile.resolution.x,Fraq(pos2.y/rawFile.resolution.y)*rawFile.resolution.y);
+	}
 	
 	var index1: int = (pos1.y*(raw_files[raw.file_index[raw.raw_number]].resolution.x)*2)+(pos1.x*2);
 	var index2: int = (pos1.y*(raw_files[raw.file_index[raw.raw_number]].resolution.x)*2)+(pos2.x*2);
@@ -4958,9 +5036,8 @@ function calc_image_value(preimage: image_class,local_x: float,local_y: float): 
 		
 		var pixels: Color[] = preimage.image[preimage.image_number].GetPixels(imagePosition.x,imagePosition.y,radius2,radius2);
 		
-		for (var count_splat_calc: int = 0;count_splat_calc < current_layer.splat_output.splat_calc.Count;++count_splat_calc)
-		{
-			current_layer.splat_output.splat_calc[count_splat_calc] = 0;
+		for (var count_splat_calc: int = 0;count_splat_calc < preterrain.splat.Length;++count_splat_calc) {
+			preterrain.splat_calc[count_splat_calc] = 0;
 		}
 		
 		for (var count_pixel: int = 0;count_pixel < pixels.Length;++count_pixel)
@@ -4981,7 +5058,7 @@ function calc_image_value(preimage: image_class,local_x: float,local_y: float): 
 							{
 								case layer_output_enum.splat:
 									output = current_layer.splat_output.splat_value.select_value[current_layer.splat_output.splat[preimage.precolor_range.color_range[count_color_range].select_output]];
-									current_layer.splat_output.splat_calc[current_layer.splat_output.splat[output*current_layer.splat_output.splat.Count]] += 1.0/(pixels.Length*1.0);				
+									preterrain.splat_calc[current_layer.splat_output.splat[output*current_layer.splat_output.splat.Count]] += 1.0/(pixels.Length*1.0);				
 									break;
 								/*case layer_output_enum.color:
 									output = current_layer.color_output.precolor_range[current_filter.color_output_index].color_range_value.select_value[preimage.precolor_range.color_range[count_color_range].select_output];				
@@ -6700,14 +6777,14 @@ function get_terrain_settings(preterrain1: terrain_class,command: String)
 		{
 			set_area_resolution(preterrain1,preterrain1.prearea);
 			set_area_resolution_prelayers(preterrain1);
-		}
+		} 
 		
 		if (preterrain1.prearea.area.xMax > preterrain1.terrain.terrainData.size.x){preterrain1.prearea.area.xMax = preterrain1.terrain.terrainData.size.x;}
 		if (preterrain1.prearea.area.yMax > preterrain1.terrain.terrainData.size.y){preterrain1.prearea.area.yMax = preterrain1.terrain.terrainData.size.z;}
 		
-		if (command_splat || command_all){get_terrain_splat_textures(preterrain1);check_synchronous_terrain_splat_textures(preterrain1);}
-		if (command_trees || command_all){get_terrain_trees(preterrain1);check_synchronous_terrain_trees(preterrain1);}
-		if (command_grass || command_all){get_terrain_details(preterrain1);check_synchronous_terrain_detail(preterrain1);}
+		if (command_splat){get_terrain_splat_textures(preterrain1);check_synchronous_terrain_splat_textures(preterrain1);}
+		if (command_trees){get_terrain_trees(preterrain1);check_synchronous_terrain_trees(preterrain1);}
+		if (command_grass ){get_terrain_details(preterrain1);check_synchronous_terrain_detail(preterrain1);}
 	}
 }
 
@@ -7752,38 +7829,17 @@ function assign_terrain_splat_alpha(preterrain1: terrain_class)
 		if (!preterrain1.terrain.terrainData){return;}
 		if (preterrain1.terrain.terrainData.splatPrototypes.Length < 1){return;}
 		
-		// update_terrain_asset(preterrain1);
-		
 		var terrainDataType: Type = preterrain1.terrain.terrainData.GetType();
+		
 		var info: PropertyInfo = terrainDataType.GetProperty("alphamapTextures", BindingFlags.Instance | BindingFlags.NonPublic);
-		if (info!=null) {
+		
+		if (info == null) info = terrainDataType.GetProperty("alphamapTextures", BindingFlags.Instance | BindingFlags.Public);
+		if (info != null) {
 			preterrain1.splat_alpha = info.GetValue(preterrain1.terrain.terrainData, null) as Texture2D[];
-		} else{
+		} 
+		else{
 			Debug.LogError("Can't access alphamapTexture directly...");
 		}
-		
-		/*
-		var alpha_length: int = Mathf.Ceil(preterrain1.terrain.terrainData.splatPrototypes.Length/4);
-		
-		var path: String = AssetDatabase.GetAssetPath(preterrain1.terrain.terrainData);
-		var path2: String;
-		
-		var objects: Object[] = AssetDatabase.LoadAllAssetsAtPath(path);
-	
-	preterrain1.splat_alpha = new Texture2D[objects.Length-1];
-	    	
-	    for (var count_object: int = 0;count_object < objects.Length;++count_object)
-	    {
-	    	if (objects[count_object].GetType() == Texture2D)
-	    	{
-	    		var numbers_only: String = Regex.Replace(objects[count_object].name,"[^0-9]","");
-				var index: int;
-				index = Convert.ToInt32(numbers_only);
-				
-				preterrain1.splat_alpha[index] = objects[count_object];
-			}
-	    }
-	    */
 	}
 }
 
@@ -7843,6 +7899,8 @@ function AutoSearchTerrains()
 	else {
 		terrainObjects = FindObjectsOfType(Terrain);
 	}
+	
+	// Debug.Log(terrainObjects.Length);
 	
 	if (terrainObjects.Length == 0) return;
 	
@@ -9545,6 +9603,21 @@ function copy_terrain(preterrain1: terrain_class): terrain_class
 	return preterrain1;
 }
 
+function copy_splat_custom(custom_splat1: splat_custom_class): splat_custom_class
+{
+	var object: GameObject = new GameObject();
+	var script3: save_template = object.AddComponent(save_template);
+		
+	script3.splat_custom = custom_splat1;
+		
+	var object2: GameObject = Instantiate(object);
+	DestroyImmediate(object);
+	script3 = object2.GetComponent(save_template);
+	custom_splat1 = script3.splat_custom;
+	DestroyImmediate(object2);
+	return custom_splat1;
+}
+
 function copy_terrain2(terrain1: Terrain): Terrain
 {
 	var object: GameObject = new GameObject();
@@ -10099,6 +10172,29 @@ function convert_software_version()
 		}
 		
 		converted_version = 1.04;	
+	}
+	
+	if (converted_version < 1.8) {
+		// Debug.Log("Sync software");
+		for (var i: int = 0;i < prelayers.Count;++i) {
+			for (var t: int = 0;t < prelayers[i].layer.Count;++t) {
+				prelayers[i].layer[t].splat_output.splat_value.SyncValueMulti();
+				prelayers[i].layer[t].grass_output.grass_value.SyncValueMulti();
+				prelayers[i].layer[t].tree_output.tree_value.SyncValueMulti();
+				prelayers[i].layer[t].object_output.object_value.SyncValueMulti();
+			}
+		}
+		SyncSplatCustom();
+		converted_version = 1.8;
+	}
+}
+
+function SyncSplatCustom()
+{
+	for (var i: int = 0;i < prelayers.Count;++i) {
+			for (var t: int = 0;t < prelayers[i].layer.Count;++t) {
+				prelayers[i].layer[t].splat_output.SyncSplatCustom(terrains[0].splatPrototypes.Count);
+		}
 	}
 }
 

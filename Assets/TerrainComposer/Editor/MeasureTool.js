@@ -12,7 +12,11 @@ class MeasureTool extends EditorWindow
 	static function ShowWindow () 
 	{
     	var window = EditorWindow.GetWindow (MeasureTool);
+    	#if UNITY_3_4 || UNITY_3_5 || UNITY_4_0 || UNITY_4_01 || UNITY_4_2 || UNITY_4_3 || UNITY_4_4 || UNITY_4_5 || UNITY_4_6 || UNITY_5_0
         window.title = "MeasureTool";
+        #else
+        window.titleContent = new GUIContent("MeasureTool");
+        #endif
     }
     
     function OnFocus()

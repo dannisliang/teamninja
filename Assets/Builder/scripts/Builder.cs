@@ -68,10 +68,18 @@ public class Builder : MonoBehaviour {
 
 		// Init Layers
 		terrainLayer = LayerMask.NameToLayer("Terrain");
+
+		//Application.targetFrameRate = 60;
 	}
 	
 	// Update is called once per frame
 	void Update () {
+
+		PhotonView pv = transform.GetComponent<PhotonView>();
+		if (pv != null && !pv.isMine) {
+			return;
+		}
+			
 
 		// Always reset previous build object if it exists
 		if (prevObject != null) {
@@ -418,14 +426,26 @@ public class Builder : MonoBehaviour {
 
 			// Network Enbled
 			PhotonView pv = transform.GetComponent<PhotonView>();
-			if(obj.ObjectOnBuild) {
-
-				pv.RPC("PlaceObject", PhotonTargets.All, obj.ObjectOnBuild.name, BuildObject.transform.position, BuildObject.transform.rotation);
-				//newBuilding = GameObject.Instantiate (obj.ObjectOnBuild, BuildObject.transform.position, BuildObject.transform.rotation);
+			// Check if single player
+			if(pv == null) {
+				if(obj.ObjectOnBuild) {
+					PlaceObject(obj.ObjectOnBuild.name, BuildObject.transform.position, BuildObject.transform.rotation);
+				}
+				else {
+					PlaceObject(initialBuilding.name, BuildObject.transform.position, BuildObject.transform.rotation);
+				}
 			}
+			// Multiplayer uses RPC Call
 			else {
-				pv.RPC("PlaceObject", PhotonTargets.All, initialBuilding.name, BuildObject.transform.position, BuildObject.transform.rotation);
-				//newBuilding = GameObject.Instantiate (initialBuilding, BuildObject.transform.position, BuildObject.transform.rotation);
+				if(obj.ObjectOnBuild) {
+					
+					pv.RPC("PlaceObject", PhotonTargets.AllBuffered, obj.ObjectOnBuild.name, BuildObject.transform.position, BuildObject.transform.rotation);
+					//newBuilding = GameObject.Instantiate (obj.ObjectOnBuild, BuildObject.transform.position, BuildObject.transform.rotation);
+				}
+				else {
+					pv.RPC("PlaceObject", PhotonTargets.AllBuffered, initialBuilding.name, BuildObject.transform.position, BuildObject.transform.rotation);
+					//newBuilding = GameObject.Instantiate (initialBuilding, BuildObject.transform.position, BuildObject.transform.rotation);
+				}
 			}
 		} 
 

@@ -1,5 +1,4 @@
-This text file contains what has changed in each update.
-Like added features, bug fixes and added documentation.
+This text file contains features, improvements and fixes for each update.
 
 If you experience any issues please contact me at Nathaniel_Doldersum@Hotmail.com
 
@@ -7,9 +6,45 @@ TerrainComposer latest downloaded version is stored in the folder -> TerrainComp
 this package if you start a new project. 
 
 If you want to start a new project with TerrainComposer and use all the saves you made, you can export the TerrainComposer
-folder to a package and import it into your new project. Be sure to include the TerrainComposer folder in Standard Assets.
+folder to a package and import it into your new project.
 
 *** DUE TO ASSET STORE REQUIREMENTS AND TERRAINS MENU REMOVED IN UNITY 4.2, TERRAINCOMPOSER IS NOW IN THE UNITY MENU -> WINDOW ***
+
+
+TerrainComposer version 1.8
+----------------------------------
+** Please read the Upgrade Guide in the TerrainComposer manual on page 8.
+
+Features:
+- Min-max sliders for layers. This gives precise control over painting/placement. Can choose this or the old slider system with 'Slider Mode' 
+  in each layer.
+- Custom splat textures. In each splat layer you can customize each splat texture by blending them together. To enable this unfold a splat
+  texture, and enable 'Custom'.
+- In splat layer can now use input 'Splatmap' in filters and masks. Using this can improve the workflow, as it takes the splatmap result of
+  the layers above it.
+- Filter/Mask input 'Splatmap' now has position slider to control the painted splat amount for it to give result 1. E.g. Increasing the slider 
+  will paint/place less.
+- Rotation of perlin noise in filters/masks. 
+
+Improvements:
+- The TerrainComposer folder can now be moved inside the project into another folder.
+- Auto generate speed based on framerate is now the only speed option. The auto button is now to enable/disable auto generate.
+- Objects are placed within terrain/mesh bounds (do to random position they sometimes moved outside).
+- Export button is disabled when switching from color output to another output.
+- Example Package download link added in 'Start Window.
+- LayerGroup active button and fold out/in only works on layers that have output that is currently active.
+- Measure tool window now closes when deactivating measure tool.
+
+Fixes:
+- Unity5 WebGL error fix when trying to make a build.
+- Unity5.0.1 patch gizmos error fix.
+- Unity5.0.1 patch and Unity5.1 beta alphamapTexture fix.
+- Tree color now are correct when using Advanced Foliage Shaders.
+- Automatic sorting of layers now works correctly.
+- Object rotation snapping in object layer.
+- Prefab link error in object layer when GameObject is not from project.
+- Tree color layer layout.
+
 
 
 TerrainComposer version 1.72

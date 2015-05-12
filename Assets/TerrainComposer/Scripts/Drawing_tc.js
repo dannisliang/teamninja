@@ -2,7 +2,10 @@ public static class Drawing_tc1
 {
 	var aaLineTex: Texture2D = null;
 	var lineTex: Texture2D = null;
- 
+	var clippingEnabled: boolean = true;
+    var clippingBounds: Rect;
+    var lineMaterial: Material = null;
+	 
  	private function Drawing_tc1()
  	{
 	 	aaLineTex = new Texture2D(1, 3, TextureFormat.ARGB32, true); 
@@ -124,13 +127,8 @@ public static class Drawing_tc1
     {
         return Matrix4x4.TRS(v, Quaternion.identity, Vector3.one);
     }
-	
 			 
-    var clippingEnabled: boolean = true;
-    var clippingBounds: Rect;
-    var lineMaterial: Material = null;
-	
-	class clip_class
+   	class clip_class
 	{
 		var u1: float;
 		var u2: float;
@@ -230,22 +228,6 @@ public static class Drawing_tc1
         clippingEnabled = false;
     }
 
-    function CreateMaterial()
-    {
-        if (lineMaterial != null)
-            return;
-
-        lineMaterial = new Material( "Shader \"Lines/Colored Blended\" {" +
-                                    "SubShader { Pass { " +
-                                    "    Blend SrcAlpha OneMinusSrcAlpha " +
-                                    "    ZWrite Off Cull Off Fog { Mode Off } " +
-                                    "    BindChannels {" +
-                                    "      Bind \"vertex\", vertex Bind \"color\", color }" +
-                                    "} } }");
-        lineMaterial.hideFlags = HideFlags.HideAndDontSave;
-        lineMaterial.shader.hideFlags = HideFlags.HideAndDontSave;
-    }
-
     function DrawLine(start: Vector2,end: Vector2,color: Color,width: float)
     {
         if (Event.current == null)
@@ -260,7 +242,7 @@ public static class Drawing_tc1
             	// return;
         // }
 
-        CreateMaterial();
+        // if (lineMaterial == null) CreateMaterial();
 
         lineMaterial.SetPass(0);
 
@@ -393,4 +375,5 @@ public static class Drawing_tc1
 		var rtt: float = rt * t;
 		return rt*rt*rt * s + 3 * rt * rtt * st + 3 * rtt * t * et + t*t*t* e;
     }
-}
+}    
+

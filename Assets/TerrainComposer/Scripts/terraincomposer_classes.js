@@ -167,6 +167,7 @@ class terrain_class
 	var detailPrototypes: List.<detailPrototype_class> = new List.<detailPrototype_class>();
 	var details_foldout: boolean = false;
 	var splat: float[];
+	var splat_calc: float[];
 	var splat_layer: float[];
 	var splat_length: int;
 	
@@ -429,6 +430,7 @@ class description_class
 	var disable_edit: boolean = false;
 	var menu_rect: Rect;
 	var rect: Rect;
+	var presubfilter: presubfilter_class = new presubfilter_class();
 	var layer_index: List.<int> = new List.<int>();
 	var layers_active: boolean = true;
 	var layers_foldout: boolean = true;
@@ -501,32 +503,28 @@ class prelayer_class
 		layer[layer_number] = new layer_class();
 	}
 
-	function change_layers_active_from_description(description_number: int,invert: boolean)
+	function change_layers_active_from_description(description_number: int,invert: boolean,heightmap_output: boolean,color_output: boolean,splat_output: boolean,tree_output: boolean,grass_output: boolean,object_output: boolean)
 	{
-		for (var count_layer: int = 0;count_layer < predescription.description[description_number].layer_index.Count;++count_layer)
-		{
-			if (!invert)
-			{
-				layer[predescription.description[description_number].layer_index[count_layer]].active = predescription.description[description_number].layers_active;
-			}
-			else
-			{
-				layer[predescription.description[description_number].layer_index[count_layer]].active = !layer[predescription.description[description_number].layer_index[count_layer]].active;
-			}
+		var layer1: layer_class;
+		for (var count_layer: int = 0;count_layer < predescription.description[description_number].layer_index.Count;++count_layer) {
+			layer1 = layer[predescription.description[description_number].layer_index[count_layer]];
+			
+			if ((layer1.output == layer_output_enum.heightmap && heightmap_output) || (layer1.output == layer_output_enum.color && color_output) || (layer1.output == layer_output_enum.splat && splat_output) || (layer1.output == layer_output_enum.tree && tree_output) || (layer1.output == layer_output_enum.grass && grass_output) || (layer1.output == layer_output_enum.object && object_output)) {
+				if (!invert) layer1.active = predescription.description[description_number].layers_active;
+				else layer1.active = !layer1.active;
+			} 
 		}
 	}
 	
-	function change_layers_foldout_from_description(description_number: int,invert: boolean)
+	function change_layers_foldout_from_description(description_number: int,invert: boolean,heightmap_output: boolean,color_output: boolean,splat_output: boolean,tree_output: boolean,grass_output: boolean,object_output: boolean)
 	{
-		for (var count_layer: int = 0;count_layer < predescription.description[description_number].layer_index.Count;++count_layer)
-		{
-			if (!invert)
-			{
-				layer[predescription.description[description_number].layer_index[count_layer]].foldout = predescription.description[description_number].layers_foldout;
-			}
-			else
-			{
-				layer[predescription.description[description_number].layer_index[count_layer]].foldout = !layer[predescription.description[description_number].layer_index[count_layer]].foldout;
+		var layer1: layer_class;
+		for (var count_layer: int = 0;count_layer < predescription.description[description_number].layer_index.Count;++count_layer) {
+			layer1 = layer[predescription.description[description_number].layer_index[count_layer]];
+			if ((layer1.output == layer_output_enum.heightmap && heightmap_output) || (layer1.output == layer_output_enum.color && color_output) || (layer1.output == layer_output_enum.splat && splat_output) || (layer1.output == layer_output_enum.tree && tree_output) || (layer1.output == layer_output_enum.grass && grass_output) || (layer1.output == layer_output_enum.object && object_output)) {
+				layer1 = layer[predescription.description[description_number].layer_index[count_layer]];
+				if (!invert) layer1.foldout = predescription.description[description_number].layers_foldout;
+				else layer1.foldout = !layer1.foldout;
 			}
 		}
 	}
@@ -716,34 +714,78 @@ class splat_output_class
 	var color_splat: Color = Color(2,2,2,1);
 	var strength: float = 1;
 	var mix: List.<float> = new List.<float>();
+	var splat_custom_foldout: boolean = true;
 	var splat_text: String = "Splat:";
-	var splat_terrain: int = 0;
+	// var splat_terrain: int = 0;
 	var terrain_splat_assigned: boolean = false;
 	var mix_mode: mix_mode_enum;
+	var rect: Rect;
 	
 	var curves: List.<animation_curve_class> = new List.<animation_curve_class>();
 	var animation_curve_math: animation_curve_math_class = new animation_curve_math_class();
 	var splat: List.<int> = new List.<int>();
 	var splat_value: value_class = new value_class();
-	var splat_calc: List.<float> = new List.<float>();
+	// var splat_calc: List.<float> = new List.<float>();
 	var swap_text: List.<String> = new List.<String>();
+	var splat_custom: List.<splat_custom_class> = new List.<splat_custom_class>();
 	
 	function splat_output_class()
 	{
-		for (var count_splat: int = 0;count_splat < 3;++count_splat)
-		{
-			add_splat(count_splat,count_splat);
+		for (var count_splat: int = 0;count_splat < 3;++count_splat) {
+			add_splat(count_splat,count_splat,0);
 		}
 	}
 	
-	function add_splat(splat_number: int,splat_index: int)
+	function SyncSplatCustom(splatLength: int)
+	{
+		// splat_custom.Clear();
+		var length: int = splat.Count-splat_custom.Count;
+		
+		if (length > 0) {	
+			for (var i: int = 0;i < length;++i) {
+				splat_custom.Add(new splat_custom_class(splatLength));
+			}
+		}
+		else if (length < 0) {
+			for (i = 0;i < -length;++i) {
+				splat_custom.RemoveAt(splat_custom.Count-1);
+			}
+		}
+		
+		for (i = 0;i < splat_custom.Count;++i) {
+			length = splatLength-splat_custom[i].value.Count;
+			
+			if (length > 0) {
+				for (var t: int = 0;t < length;++t) {
+					splat_custom[i].value.Add(0);
+				}
+			}
+			else if (length < 0) {
+				for (t = 0;t < -length;++t) {
+					splat_custom[i].value.RemoveAt(splat_custom[i].value.Count-1);
+				}
+			}
+		}
+	}
+	
+	function FoldAllSplatCustom(invert: boolean) 
+	{
+		for (var i: int = 0;i < splat_custom.Count;++i) {
+			if (invert) splat_custom[i].foldout = !splat_custom[i].foldout; else splat_custom[i].foldout = splat_custom_foldout;
+		}	
+		if (!invert) splat_custom_foldout = !splat_custom_foldout;
+	}
+	
+	function add_splat(splat_number: int,splat_index: int,splatLength: int)
 	{
 		splat.Insert(splat_number,splat_index);
-		splat_calc.Insert(splat_number,0);
+		// splat_calc.Insert(splat_number,0);
 		curves.Insert(splat_number,new animation_curve_class());
 		mix.Insert(splat_number,0.5);
 		splat_value.add_value(splat_number,50);
 		swap_text.Insert(splat_number,"S");
+		
+		splat_custom.Insert(splat_number,new splat_custom_class(splatLength));
 		
 		set_splat_curve();
 		set_splat_text();
@@ -754,12 +796,13 @@ class splat_output_class
 		if (splat.Count > 0)
 		{
 			splat.RemoveAt(splat_number);
-			splat_calc.RemoveAt(splat_number);
+			// splat_calc.RemoveAt(splat_number);
 			mix.RemoveAt(splat_number);
 			curves.RemoveAt(splat_number);
 			splat_value.erase_value(splat_number);
 			swap_text.RemoveAt(splat_number);
-		
+			splat_custom.RemoveAt(splat_number);
+			
 			set_splat_curve();
 			set_splat_text();
 		}
@@ -768,6 +811,7 @@ class splat_output_class
 	function clear_splat()
 	{
 		splat.Clear();
+		splat_custom.Clear();
 		splat_value.clear_value();
 		mix.Clear();
 		curves.Clear();
@@ -781,11 +825,14 @@ class splat_output_class
 	{
 		if (splat_number2 > -1 && splat_number2 < splat.Count)
 		{
-			var splat2: float = splat[splat_number1];
-			var splat_value2: float = splat_value.value[splat_number1];
+			var splat0: float = splat[splat_number1];
+			// var splat_value0: float = splat_value.value[splat_number1];
+			var splat_custom0: splat_custom_class = splat_custom[splat_number1];
 			
 			splat[splat_number1] = splat[splat_number2];
-			splat[splat_number2] = splat2;
+			splat_custom[splat_number1] = splat_custom[splat_number2];
+			splat_custom[splat_number2] = splat_custom0;
+			splat[splat_number2] = splat0;
 			
 			splat_value.swap_value(splat_number1,splat_number2);
 			set_splat_curve();
@@ -890,7 +937,7 @@ class tree_output_class
 	var icon_display: boolean = true;
 	var trees_active: boolean = true;
 	var trees_foldout: boolean = true;
-	var tree_terrain: int = 0;
+	// var tree_terrain: int = 0;
 	var terrain_tree_assigned: boolean = false;
 	var tree_text: String = "Tree:";
 	var scale: float = 1;
@@ -1106,7 +1153,7 @@ class grass_output_class
 	var foldout: boolean = true;
 	var color_grass: Color = Color(2,2,2,1);
 	var strength: float = 1;
-	var grass_terrain: int = 0;
+	// var grass_terrain: int = 0;
 	var grass_text: String = "Grass:";
 	var mix: List.<float> = new List.<float>();
 	var mix_mode: mix_mode_enum;
@@ -1727,6 +1774,7 @@ class object_class
 	var position_end: Vector3 = Vector3(0,0,0);
 	var terrain_height: boolean = true;
 	var terrain_rotate: boolean = false;
+	// var placeInside: boolean = true;
 	
 	var scale_steps: boolean = false;
 	var scale_step: Vector3;
@@ -1873,6 +1921,9 @@ class animation_curve_class
 	var detail_strength: float = 2;
 	var pivot: Transform;
 	var strength: float = 1;
+	
+	var rotation: boolean = false;
+	var rotation_value: float;
 	
 	function set_zero()
 	{
@@ -2041,6 +2092,408 @@ class animation_curve_math_class
 }
 
 class value_class
+{
+	// old
+	var value: List.<float> = new List.<float>();
+	var value_multi: List.<Vector2> = new List.<Vector2>();
+	var select_value: List.<float> = new List.<float>();
+	var active: List.<boolean> = new List.<boolean>();
+	var rect: List.<Rect> = new List.<Rect>();
+	var text: List.<String> = new List.<String>();
+	var value_active: boolean = true;
+	var value_total: float;
+	var active_total: int;
+	var curve: AnimationCurve = new AnimationCurve();
+	var animation_curve_math: animation_curve_math_class = new animation_curve_math_class();
+	var mode: SliderMode_Enum;
+	
+	// new
+	// var value1: List.<value1_class> = new List.<value1_class>();
+	
+//	function convert_old(length: int)
+//	{
+//		var convert: boolean = false;
+//		
+//		if (value1.Count < length){convert = true;}
+//		
+//		while (value1.Count < length) {
+//			value1.Add(value1_class());
+//		}
+//		
+//		if (convert) {
+//			for (var count_value: int = 0;count_value < value.Count;++count_value) {
+//				value1[count_value].value = value[count_value];
+//				if (count_value < value_multi.Count) {
+//					Debug.Log(count_value+" value1: "+value1.Count+" value_multi: "+value_multi.Count);
+//					value1[count_value].value_multi = value_multi[count_value]; 
+//				}
+//				if (count_value < select_value.Count) {
+//					value1[count_value].select_value = select_value[count_value];
+//				}
+//				value1[count_value].active = active[count_value];
+//				value1[count_value].text = text[count_value];
+//			}
+//		}
+//	}
+	function calc_active_total() 
+	{
+		active_total = 0;
+		
+		for (var i: int = 0;i < value.Count;++i)
+		{
+			if (active[i]){value_total += value[i];++active_total;}
+		}
+	}
+	
+	function calc_index(index: int)
+	{
+		var tIndex: int = 0;
+		
+		for (var i: int = 0;i < index;++i) {
+			if (active[i]){++tIndex;}
+		}
+		return tIndex;
+	}
+	
+	function set_values(value_index: int)
+	{
+		if (mode == SliderMode_Enum.One){calc_value();} else {set_value_multi(value_index);}
+	}
+	
+	function Active(index: int)
+	{
+		// if (mode == SliderMode_Enum.One) return;
+		return;
+//		if (active[index]) {
+//			value_multi[index] = new Vector2(GetPreviousValue(index),GetNextValue(index));
+//		}
+//		else {
+//			var index2 = GetPreviousIndex(index);
+//			if (index2 >= 0) value_multi[index2] = new Vector2(value_multi[index2].x,GetNextValue(index2));
+//			// index2 = GetNextIndex(index);
+//			// if (index2 < value.Count) value_multi[index2] = new Vector2(value_multi[index2].x,GetPreviousValue(index2));
+//		}
+	} 
+	
+	function GetPreviousValue(index: int): float
+	{
+		var v: float = 0;
+		
+		for (var i: int = index-1;i >= 0;--i) {
+			if (active[i]) {v = value_multi[i].y;break;}
+		}
+		
+		return v;
+	}
+	
+	function GetPreviousIndex(index: int): int
+	{
+		for (var i: int = index-1;i >= 0;--i) {
+			if (active[i]) {return i;}
+		}
+		return -1;
+	}
+	
+	function GetNextValue(index: int)
+	{
+		var v: float = 0;
+		
+		for (var i: int = index+1;i < value.Count;++i) {
+			if (active[i]) {v = value_multi[i].x;break;}
+		}
+		
+		return v;
+	}
+	
+	function GetNextIndex(index: int)
+	{
+		for (var i: int = index+1;i < value.Count;++i) {
+			if (active[i]) return i;
+		}
+		
+		return value.Count;
+	}
+	
+	function calc_value()
+	{
+		value_total = 0;
+		var value2: float = 0;
+		var i: int;
+		
+		calc_active_total();
+		
+		var keys: Keyframe[] = new Keyframe[active_total+1];
+		var count_active: int;
+		
+		count_active = 0;
+		
+		if (mode == SliderMode_Enum.One)
+		{
+			for (i = 0;i < value.Count;++i)
+			{
+				if (active[i])
+				{
+					keys[count_active].value = ((1.0/(active_total*1.0))*(count_active+1));
+					keys[count_active].time = value2+(value[i]/value_total);
+					select_value[i] = ((value2*2)+(value[i]/value_total))/2;
+					
+					text[i] = "("+value2.ToString("F2")+"-"+keys[count_active].time.ToString("F2")+")";
+					
+					value2 = keys[count_active].time;
+					++count_active;
+				} else {text[i] = "(- )";}
+			}
+		}
+		else
+		{	
+			for (i = 0;i < value.Count;++i)
+			{
+				if (active[i])
+				{
+					keys[count_active].value = ((1.0/(active_total*1.0))*(count_active+1));
+					keys[count_active].time = value_multi[i].y/100;
+					
+					if (keys[count_active].time == value2)
+					{
+						if (keys[count_active].time >= 1)
+						{
+							keys[count_active-1].time -= 0.01;
+						}
+						else
+						{
+							keys[count_active].time += 0.01;
+						}
+					}
+					
+					text[i] = "("+value2.ToString("F2")+"-"+keys[count_active].time.ToString("F2")+")";
+					
+					value2 = keys[count_active].time;
+					++count_active;
+				}else {text[i] = "(- )";}
+			}
+		}
+		
+		curve = animation_curve_math.set_curve_linear(new AnimationCurve(keys));
+	}
+	
+	function set_value_multi(index: int)
+	{
+		// return;
+		if (value.Count == 0){return;}
+		calc_active_total();
+		
+		if (value_multi[index].y < value_multi[index].x) {
+			value_multi[index] = Vector2(value_multi[index].x,value_multi[index].x+0.5);
+		}
+		
+		// Debug.Log("Called "+index);									
+			
+		var i: int;
+		var count_not_active: int = 0;
+			
+		for (i = 0;i < value.Count;++i)
+		{
+			if (!active[i] && i > 0){++count_not_active;continue;}
+			if (i > index) {
+				value_multi[i] = Vector2(value_multi[i-1-count_not_active].y,value_multi[i].y);	
+				// Debug.Log("index: "+(i-1-count_not_active));
+				if (value_multi[i].x > value_multi[i].y) {
+					value_multi[i] = Vector2(value_multi[i].x,value_multi[i].x+0.5);
+				}
+			}
+			
+			count_not_active = 0;
+		}									
+		
+		count_not_active = 0;
+		
+		if (index > 0)
+		{
+			for (i = index-1;i >= 0;--i)
+			{
+				if (!active[i]){++count_not_active;continue;}
+				value_multi[i] = Vector2(value_multi[i].x,value_multi[i+1+count_not_active].x);	
+				if (value_multi[i].y < value_multi[i].x)
+				{
+					value_multi[i] = Vector2(value_multi[i].y-0.5,value_multi[i].y);
+				}
+				count_not_active = 0;
+			}
+		}
+		
+		var count_active: int = 0;
+		
+		for (i = 0;i < value.Count;++i)
+		{
+			if (active[i])
+			{
+				if (count_active == 0){value_multi[i] = Vector2(0,value_multi[i].y);}
+				if (count_active == active_total-1){value_multi[i] = Vector3(value_multi[i].x,100);}
+				++count_active;
+			}
+			else
+			{ 
+				// value1[i].value_multi = Vector2(0,0);
+			}
+		}
+		
+		calc_value();
+	}
+	
+	function reset_values()
+	{
+		if (mode == SliderMode_Enum.One)
+		{
+			for (var i: int = 0;i < value.Count;++i) {
+				value[i] = 50;
+			}
+		}
+		else {
+			reset_value_multi();
+		}
+		
+		calc_value();
+	}
+	
+	function reset_value_multi()
+	{
+		var count_not_active: int = 0;
+		var count_active: int = 0;
+		var range: Vector2;
+			
+		calc_active_total();
+			
+		if (active_total == 0){return;}
+			
+		for (var i: int = 0;i < value.Count;++i)
+		{
+			if (active[i])
+			{
+				if (count_active == 0){range.x = 0;} else {range.x = value_multi[i-1-count_not_active].y;}
+				range.y = range.x+(100.0/active_total);
+				if (count_active == active_total)
+				{
+					range.y = 100;
+				}
+				
+				value_multi[i] = range;
+				count_not_active = 0;
+				++count_active;
+			}
+			else
+			{
+				++count_not_active;
+			}
+		}
+	}
+	
+	function reset_single_value(index: int)
+	{
+		if (mode == SliderMode_Enum.One)
+		{
+			value[index] = 50;
+			calc_value();
+		}
+		else
+		{
+			if (!active[index]){return;}
+			
+			calc_active_total();
+			var index2: int = calc_index(index);
+			
+			value_multi[index] = Vector2((1.0/active_total)*index2*100,(((1.0/active_total)*index2)+(1.0/active_total))*100);
+			
+			set_value_multi(index);
+		}
+	}
+	
+	function change_value_active(invert: boolean)
+	{
+		for (var i: int = 0;i < value.Count;++i)
+		{
+			if (!invert)
+			{
+				active[i] = value_active;
+			}
+			else
+			{
+				active[i] = !active[i];
+			}
+		}
+		
+		set_values(0);
+	}
+	
+	function add_value(index: int,number: float)
+	{
+		// value1.Insert(index,value1_class());
+		
+		value.Insert(index,number);
+		if (index > 0){value_multi.Insert(index,new Vector2(100,100));} else {value_multi.Insert(index,new Vector2(0,100));}
+		rect.Insert(index,new Rect());
+		select_value.Insert(index,0);
+		active.Insert(index,true);
+		text.Insert(index,"");
+		
+		calc_value();
+	}
+	
+	function erase_value(index: int)
+	{
+		value.RemoveAt(index);
+		rect.RemoveAt(index);
+		value_multi.RemoveAt(index);
+		select_value.RemoveAt(index);
+		active.RemoveAt(index);
+		text.RemoveAt(index);
+		
+		if (value.Count > 0) {set_values(0);}
+	}
+	
+	function clear_value()
+	{
+		value.Clear();
+		rect.Clear();
+		value_multi.Clear();
+		select_value.Clear();
+		active.Clear();
+		text.Clear();
+	}
+	
+	function SyncValueMulti()
+	{
+		var length: int = value.Count-value_multi.Count;
+		
+		for (var i: int = 0;i < length;++i) {
+			if (i > 0){value_multi.Add(new Vector2(100,100));} else {value_multi.Add(new Vector2(0,100));}
+			rect.Add(new Rect());
+		}
+		
+		if (length != 0) reset_value_multi();
+	}
+	
+	function swap_value(index1: int,index2: int) 
+	{ 
+		var value0: float = value[index1];
+		// var value_multi0: Vector2 = value_multi[index1];
+		var select_value0: float = select_value[index1];
+		var active0: boolean = active[index1];
+		
+		value[index1] = value[index2];
+		// value_multi[index1] = value_multi[index2];
+		select_value[index1] = select_value[index2];
+		active[index1] = active[index2];
+		
+		value[index2] = value0;
+		// value_multi[index2] = value_multi0;
+		select_value[index2] = select_value0;
+		active[index2] = active0;
+		
+		calc_value();
+	}
+}
+
+class value_class2
 {
 	var value: List.<float> = new List.<float>();
 	var select_value: List.<float> = new List.<float>();
@@ -2864,3 +3317,171 @@ class grass_parameter_class
 	var prototype: int;
 	var density: float = 1;
 }
+
+class splat_custom_class
+{
+	var value: List.<float> = new List.<float>();
+	var custom: boolean = false;
+	var foldout: boolean = false;
+	var rect: Rect;
+	var rect2: Rect;
+	var rect3: Rect;
+	var totalValue: float;
+			
+	var changed: boolean = false;
+	
+	function splat_custom_class(length: int)
+	{
+		for (var count_splat: int = 0;count_splat < length;++count_splat)
+		{
+			value.Add(0);
+		}
+	}
+	
+	function CalcTotalValue()
+	{
+		totalValue = 0;
+		for (var count_splat: int = 0;count_splat < value.Count;++count_splat) {
+			totalValue += value[count_splat];
+		}
+	}
+}
+
+#if UNITY_EDITOR
+static class GUIW
+{
+	var sliderBaseMiddle: Texture;
+	var sliderBaseLeft: Texture;
+	var sliderBaseRight: Texture;
+	var sliderMiddle: Texture;
+	var sliderLeft: Texture;
+	var sliderRight: Texture;
+	
+	var changed: boolean = false;
+	var mouseDown: boolean = false;
+	var mousePosOld: Vector2;
+	var delta: Vector2;
+	var vOld: Vector2;
+	
+	var leftDown = false;
+	var rightDown = false;
+	var middleDown = false;
+	
+	function MinMaxSlider(rect: Rect,v: Vector2,min: float,max: float,clickOffset: Vector2): Vector2
+	{
+		changed = false;
+		rect.width -= 16;
+		
+		if (sliderBaseMiddle == null) return;
+		var key: Event = Event.current;
+		var leftRect: Rect;
+		var rightRect: Rect;
+		var middleRect: Rect;
+		
+		// Debug.Log(key.mousePosition+", "+rect);
+		
+		var range: float = max-min;
+		var scale: float = range/rect.width;
+		// Debug.Log(rect);
+		// Debug.Log(scale);
+		
+		GUI.DrawTexture(new Rect(rect.x+2,rect.y+(rect.height/2),rect.width+12,5),sliderBaseMiddle);
+		GUI.DrawTexture(new Rect(rect.x,rect.y+(rect.height/2),2,5),sliderBaseLeft);
+		GUI.DrawTexture(new Rect((rect.x+rect.width)+14,rect.y+(rect.height/2),2,5),sliderBaseRight);
+		
+		var startLeft: float = (((v.x-min)/range)*rect.width);
+		var startRight: float = (((v.y-min)/range)*rect.width);
+		leftRect = new Rect(rect.x+startLeft,rect.y+(rect.height/2)-3,8,11);
+		rightRect = new Rect(rect.x+startRight+8,rect.y+(rect.height/2)-3,8,11);
+		middleRect = new Rect(rect.x+startLeft+8,rect.y+(rect.height/2),(startRight-startLeft),5);
+		
+		GUI.DrawTexture(middleRect,sliderMiddle); 
+		GUI.DrawTexture(leftRect,sliderLeft); 
+		GUI.DrawTexture(rightRect,sliderRight); 
+		
+		middleRect.y -= 5;
+		middleRect.height += 10;
+		
+		if (key.type == EventType.MouseDown) {
+			
+			if (leftRect.Contains(key.mousePosition)) {
+				leftDown = true;
+				mousePosOld = key.mousePosition;
+				vOld = v;
+				mouseDown = true;
+			}
+			else if (rightRect.Contains(key.mousePosition)) {
+				rightDown = true;
+				mousePosOld = key.mousePosition;
+				vOld = v;
+				mouseDown = true;
+			}
+			else if (middleRect.Contains(key.mousePosition)) {
+				middleDown = true;
+				mousePosOld = key.mousePosition;
+				vOld = v;
+				mouseDown = true;
+			}
+		}
+		if (key.type == EventType.MouseUp) {
+			mouseDown = false;
+			leftDown = false;
+			rightDown = false;
+			middleDown = false;
+		}
+		
+		delta = key.mousePosition-mousePosOld;
+		
+		if (mouseDown) {
+			if (leftDown) {
+				leftRect.x -= clickOffset.x;
+				leftRect.width += clickOffset.x*2;
+				leftRect.y -= clickOffset.y;
+				leftRect.height += clickOffset.y*2;
+				if (leftRect.Contains(key.mousePosition)) {
+					v.x = vOld.x+(delta.x*scale);
+					changed = true;
+				}
+			}
+			else if (rightDown) {
+				rightRect.x -= clickOffset.x;
+				rightRect.width += clickOffset.x*2;
+				rightRect.y -= clickOffset.y;
+				rightRect.height += clickOffset.y*2;
+				
+				if (rightRect.Contains(key.mousePosition)) {
+					v.y = vOld.y+(delta.x*scale);
+					if (v.y < v.x) v.y = v.x;
+					changed = true;
+				}
+			}
+			if (middleDown) {
+				middleRect.x -= clickOffset.x;
+				middleRect.width += clickOffset.x*2;
+				middleRect.y -= clickOffset.y;
+				middleRect.height += clickOffset.y*2;
+				
+				if (middleRect.Contains(key.mousePosition)) {
+					v.x = vOld.x+(delta.x*scale);
+					v.y = vOld.y+(delta.x*scale);
+					changed = true;
+				}
+			}
+		}
+		v.y = Mathf.Clamp(v.y,min,max);
+		v.x = Mathf.Clamp(v.x,min,v.y);
+		
+		return v;
+	}
+	
+	function LoadTextures(install_path: String)
+	{
+		sliderBaseMiddle = AssetDatabase.LoadAssetAtPath(install_path+"/Buttons/SliderBaseMiddle.psd",Texture);	
+		sliderBaseLeft = AssetDatabase.LoadAssetAtPath(install_path+"/Buttons/SliderBaseLeft.psd",Texture);	
+		sliderBaseRight = AssetDatabase.LoadAssetAtPath(install_path+"/Buttons/SliderBaseRight.psd",Texture);	
+		sliderMiddle = AssetDatabase.LoadAssetAtPath(install_path+"/Buttons/SliderMiddle.psd",Texture);	
+		sliderLeft = AssetDatabase.LoadAssetAtPath(install_path+"/Buttons/SliderLeft.psd",Texture);	
+		sliderRight = AssetDatabase.LoadAssetAtPath(install_path+"/Buttons/SliderRight.psd",Texture);	
+	}
+}
+#endif

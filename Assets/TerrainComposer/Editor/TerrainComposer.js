@@ -9,12 +9,14 @@ import System.Reflection;
 
 class TerrainComposer extends EditorWindow 
 {
+    var install_path: String = "";
     var source: GameObject;
     var count_terrain: int;
     var counter2: int;
     var count_filter: int;
     var count_subfilter: int;
     
+    // static var TCLogo: Texture;
   	var button_heightmap: Texture;
     var button_colormap: Texture;
     var button_splatmap: Texture;
@@ -172,7 +174,12 @@ class TerrainComposer extends EditorWindow
 	{
         
         window = EditorWindow.GetWindow (TerrainComposer);
+        
+        #if UNITY_3_4 || UNITY_3_5 || UNITY_4_0 || UNITY_4_01 || UNITY_4_2 || UNITY_4_3 || UNITY_4_4 || UNITY_4_5 || UNITY_4_6 || UNITY_5_0
         window.title = "TerrainComp.";
+        #else
+        window.titleContent = new GUIContent("TerrainComp.");
+        #endif
     }
     
     /*
@@ -185,13 +192,16 @@ class TerrainComposer extends EditorWindow
     function OnEnable()
     {
     	disabled = false;
+    	GetInstallPath();
+    	if (Drawing_tc1.lineMaterial == null)
+    		Drawing_tc1.lineMaterial = AssetDatabase.LoadAssetAtPath(install_path+"/Templates/Drawing_tc.mat",Material) as Material;
     	
-    	if ((!TerrainComposer_Scene || !script || !global_script) && !script_failed)
-        {
+    	if ((!TerrainComposer_Scene || !script || !global_script) && !script_failed) {
         	Get_TerrainComposer_Scene();
         }
-    	
-    	// var cb: EditorApplication.CallbackFunction = MyUpdate;
+        
+        
+        // var cb: EditorApplication.CallbackFunction = MyUpdate;
     	
     	// EditorApplication.update = System.Delegate.Combine(cb,EditorApplication.update);
 		
@@ -202,6 +212,17 @@ class TerrainComposer extends EditorWindow
 		load_button_textures();
 		
 		content_checked = false;
+	}
+	
+	function GetInstallPath()
+	{
+		install_path = AssetDatabase.GetAssetPath(MonoScript.FromScriptableObject(this));
+		var index: int = install_path.LastIndexOf("/Editor");
+		
+		install_path = install_path.Substring(0,index);
+		if (GUIW.sliderBaseMiddle == null) GUIW.LoadTextures(install_path);
+		// Debug.Log (install_path);
+		// TC.fullInstallPath = Application.dataPath.Replace("Assets","")+TC.installPath;
 	}
 		
 	function content_startup()
@@ -240,7 +261,7 @@ class TerrainComposer extends EditorWindow
         }
         else {set_path = true;}
         
-        load_terraincomposer("Assets/TerrainComposer/Templates/new_setup.prefab",false,false,false);
+        load_terraincomposer(install_path+"/Templates/new_setup.prefab",false,false,false);
         load_global_settings();
         
         if (!script || !TerrainComposer_Scene)
@@ -278,8 +299,9 @@ class TerrainComposer extends EditorWindow
 			script.get_rtp_lodmanager();
 		}
 		
+		GetInstallPath();
 		set_paths();
-		RefreshRawFiles();
+		// RefreshRawFiles();
 		script.convert_software_version();
 		if (layerMasks.Count == 0) {create_layer_mask();}
 	}
@@ -292,7 +314,8 @@ class TerrainComposer extends EditorWindow
 			
 	function load_button_textures()
     {
-    	var install_path: String = "Assets/TerrainComposer";
+    	// var install_path: String = "Assets/TerrainComposer";
+    	// TCLogo = AssetDatabase.LoadAssetAtPath(install_path+"/Buttons/TCLogo.png",Texture);
     	
         button_heightmap = AssetDatabase.LoadAssetAtPath(install_path+"/Buttons/button_heightmap.png",Texture);
 	    button_colormap = AssetDatabase.LoadAssetAtPath(install_path+"/Buttons/button_colormap.png",Texture);
@@ -370,6 +393,8 @@ class TerrainComposer extends EditorWindow
         	changed_input = true;
         }
         
+        script.masterTerrain = script.terrains[0];
+        
         if (global_script.settings.color.backgroundActive)
         {
 	       	if (script.tex1) {
@@ -439,7 +464,7 @@ class TerrainComposer extends EditorWindow
         	 rect.x += 165;
         	 if (!global_script.settings.undo) rect.x -= 55;
         	 menu = new GenericMenu ();                                
-        	 menu.AddItem (new GUIContent("Color Layout Scheme"),global_script.settings.color_scheme_display,main_menu,"color_scheme_display");   
+        	 menu.AddItem (new GUIContent("Interface Colors"),global_script.settings.color_scheme_display,main_menu,"color_scheme_display");   
         	 menu.AddSeparator("");
         	 menu.AddItem (new GUIContent("Generate Settings"),script.generate_settings,main_menu,"generate_settings"); 
         	 menu.AddItem (new GUIContent("Terrain Max Settings"),script.settings.terrain_settings,main_menu,"terrain_settings");
@@ -714,13 +739,7 @@ class TerrainComposer extends EditorWindow
         	}
         	if(GUILayout.Button(GUIContent(button_measure_tool,tooltip_text),GUILayout.Width(52),GUILayout.Height(32)))
         	{
-        		script.measure_tool = !script.measure_tool;
-        		if (!script.measure_tool){script.measure_tool_active = false;}
-        		if (script.measure_tool)
-        		{
-        			script.measure_tool_active = true;
-        			if (script.measure_tool_undock){create_window_measure_tool();}
-        		}
+        		ToggleMeasureTool();
         	}
         	if (script.measure_tool){GUI.backgroundColor = Color.white;}
         }
@@ -1032,7 +1051,7 @@ class TerrainComposer extends EditorWindow
 				if (GUILayout.Button("Import",GUILayout.Width(80)))
 				{
 					Debug.Log("The 'ArgumentException: Getting control 10's position in a group with only 10 controls when doing Repaint' is not a really an error, just 1 frame draw repaint mismatch of the TerrainComposer window, because the code changes after importing. The console can be cleared after getting the warning.");
-					import_contents(Application.dataPath+"/TerrainComposer/Update/TerrainComposer.unitypackage",true);
+					import_contents(Application.dataPath+install_path.Replace("Assets","")+"/Update/TerrainComposer.unitypackage",true);
 				}
 			}
 			EditorGUILayout.EndHorizontal();
@@ -1065,7 +1084,7 @@ class TerrainComposer extends EditorWindow
 			}
 			GUI.color = Color.white;
 			if (GUILayout.Button("Click here",GUILayout.Width(78))) {
-				Application.OpenURL (Application.dataPath+"/TerrainComposer/TerrainComposer.pdf");
+				Application.OpenURL (Application.dataPath+install_path.Replace("Assets","")+"/TerrainComposer.pdf");
 			}
 			EditorGUILayout.EndHorizontal();
 			
@@ -1108,7 +1127,7 @@ class TerrainComposer extends EditorWindow
 			GUI.color = Color.white;
 	    	if (map_tc) {
 	    		if (GUILayout.Button("Click here",GUILayout.Width(78))) {
-					Application.OpenURL (Application.dataPath+"/TerrainComposer/WorldComposer.pdf");
+					Application.OpenURL (Application.dataPath+install_path.Replace("Assets","")+"/WorldComposer.pdf");
 				}
 			}
 			else {
@@ -1118,29 +1137,20 @@ class TerrainComposer extends EditorWindow
 			}
 			GUILayout.Space(22);
 	    	EditorGUILayout.EndHorizontal();
-			
-			EditorGUILayout.BeginHorizontal();
+	    	
+	    	EditorGUILayout.BeginHorizontal();
 	    	GUI.color = Color.green;
-			EditorGUILayout.LabelField("RTPv3 Terrain Rendering Forum (NEW)",EditorStyles.boldLabel);
+			EditorGUILayout.LabelField("WorldComposer Forum",EditorStyles.boldLabel);
+			 
 			GUI.color = Color.white;
-			if (GUILayout.Button("Click here",GUILayout.Width(78))) {
-				Application.OpenURL ("http://forum.unity3d.com/threads/206516-Relief-Terrain-Pack-(RTP)-v3-on-AssetStore");
+    		if (GUILayout.Button("Click here",GUILayout.Width(78))) {
+				Application.OpenURL ("http://forum.unity3d.com/threads/worldcomposer-a-tool-to-create-real-world-aaa-quality-terrain.215485/");
 			}
-			GUILayout.Space(22);
-			EditorGUILayout.EndHorizontal();
 			
-			EditorGUILayout.BeginHorizontal();
-	    	GUI.color = Color.green;
-			EditorGUILayout.LabelField("Ufs Flight Simulation Engine Forum (NEW)",EditorStyles.boldLabel);
-			GUI.color = Color.white;
-			if (GUILayout.Button("Click here",GUILayout.Width(78))) {
-				Application.OpenURL ("http://forum.unity3d.com/threads/171604-UnityFS-Flight-Simulation-toolkit");
-			
-			}
 			GUILayout.Space(22);
-			EditorGUILayout.EndHorizontal();
-																																																																																																															
-			GUILayout.Space(3);
+	    	EditorGUILayout.EndHorizontal();
+	    	
+	    	GUILayout.Space(3);
 	    	EditorGUILayout.BeginHorizontal();
 	    	GUI.color = Color.green;
 			EditorGUILayout.LabelField("Download",EditorStyles.boldLabel);
@@ -1171,24 +1181,36 @@ class TerrainComposer extends EditorWindow
 				}
 				else {
 					#if UNITY_3_4 || UNITY_3_5 || UNITY_4_0 || UNITY_4_01 || UNITY_4_2 || UNITY_4_3 || UNITY_4_4 || UNITY_4_5 || UNITY_4_6 	
-					if (File.Exists(Application.dataPath+"/TerrainComposer/Download/TerrainComposer_Examples1.2.unitypackage")) {
+					if (File.Exists(Application.dataPath+install_path.Replace("Assets","")+"/Download/TerrainComposer_Examples1.2.unitypackage")) {
 						if (GUILayout.Button("Import",GUILayout.Width(100))) {
-							AssetDatabase.ImportPackage(Application.dataPath+"/TerrainComposer/Download/TerrainComposer_Examples1.2.unitypackage",true);
+							AssetDatabase.ImportPackage(Application.dataPath+install_path.Replace("Assets","")+"/Download/TerrainComposer_Examples1.2.unitypackage",true);
 						}
 					}
-					else if (GUILayout.Button("Download",GUILayout.Width(100))) {
-						global_script.settings.download2 = new WWW("http://www.terraincomposer.com/TerrainComposer_Examples1.2.unitypackage");  
-	    				global_script.settings.downloading2 = 1;
+					else {
+						if (GUILayout.Button("Download Link",GUILayout.Width(120))) {
+							Application.OpenURL("https://www.dropbox.com/s/nx5r0e6btv24dz4/TerrainComposer_Examples1.2.unitypackage?dl=0");
+							Debug.Log("Please import the Example Package manually after downloading by double clicking the package in your computer browser");
+						}
+						if (GUILayout.Button("Download Direct",GUILayout.Width(120))) {
+							global_script.settings.download2 = new WWW("http://www.terraincomposer.com/TerrainComposer_Examples1.2.unitypackage");  
+	    					global_script.settings.downloading2 = 1;
+	    				}
 					}
 					#else
-					if (File.Exists(Application.dataPath+"/TerrainComposer/Download/TerrainComposer_Examples5.0.unitypackage")) {
+					if (File.Exists(Application.dataPath+install_path.Replace("Assets","")+"/Download/TerrainComposer_Examples5.0.unitypackage")) {
 						if (GUILayout.Button("Import",GUILayout.Width(100))) {
-							AssetDatabase.ImportPackage(Application.dataPath+"/TerrainComposer/Download/TerrainComposer_Examples5.0.unitypackage",true);
+							AssetDatabase.ImportPackage(Application.dataPath+install_path.Replace("Assets","")+"/Download/TerrainComposer_Examples5.0.unitypackage",true);
 						}
 					}
-					else if (GUILayout.Button("Download",GUILayout.Width(100))) {
-						global_script.settings.download2 = new WWW("http://www.terraincomposer.com/TerrainComposer_Examples5.0.unitypackage");  
-	    				global_script.settings.downloading2 = 1;
+					else {
+						if (GUILayout.Button("Download Link",GUILayout.Width(120))) {
+							Application.OpenURL("https://www.dropbox.com/s/fjhfj5lee4f3rdo/TerrainComposer_Examples5.0.unitypackage?dl=0");
+							Debug.Log("Please import the Example Package manually after downloading by double clicking the package in your computer browser");
+						}
+						if (GUILayout.Button("Download Direct",GUILayout.Width(120))) {
+							global_script.settings.download2 = new WWW("http://www.terraincomposer.com/TerrainComposer_Examples5.0.unitypackage");  
+	    					global_script.settings.downloading2 = 1;
+	    				}
 					}
 					#endif 
 					
@@ -1248,7 +1270,7 @@ class TerrainComposer extends EditorWindow
 	        }
 	        if (GUILayout.Button("<Fix Database>",GUILayout.Width(120)) && key.shift)
 	        {
-	        	Undo("Fix Database");
+	        	UndoRegister("Fix Database");
 	        	script.loop_prelayer("(fix)(inf)",0,true);
 	        }
 	        if (GUILayout.Button("Reset Swap/Copy",GUILayout.Width(120)))
@@ -1326,7 +1348,7 @@ class TerrainComposer extends EditorWindow
 	    		EditorGUILayout.BeginHorizontal();
 	    		EditorGUILayout.LabelField("Project Prefab",GUILayout.Width(120));
 	        	if (GUILayout.Button("<Revert>",GUILayout.Width(70)) && key.shift) {
-	        		Undo("Revert Project Prefab");
+	        		UndoRegister("Revert Project Prefab");
 	        		PrefabUtility.RevertPrefabInstance(TerrainComposer_Scene);
 				}
 	        	if (GUILayout.Button("<Apply>",GUILayout.Width(70)) && key.shift) {
@@ -1348,33 +1370,33 @@ class TerrainComposer extends EditorWindow
        		
        		if (script.generate_settings_foldout)
        		{
-       			EditorGUILayout.BeginHorizontal();
-	        	GUILayout.Space(15);
-	        	gui_changed_old = GUI.changed;
-	        	gui_changed_window = GUI.changed; GUI.changed = false;
-	        	EditorGUILayout.LabelField("Generate Speed",GUILayout.Width(170));
-	        	script.generate_speed = EditorGUILayout.IntField(script.generate_speed,GUILayout.Width(50));
-	        	if (GUI.changed)
-	        	{
-	        		if (script.generate_speed < 1){script.generate_speed = 1;}
-	        		if (script2){script2.generate_speed = script.generate_speed;}
-	        	}
-	        	GUI.changed = gui_changed_old;
-	        	EditorGUILayout.EndHorizontal();
-	        	
-	       		EditorGUILayout.BeginHorizontal();
-	        	GUILayout.Space(15);
-	        	EditorGUILayout.LabelField("Object Place Speed",GUILayout.Width(170));
-	        	gui_changed_old = GUI.changed;
-	        	gui_changed_window = GUI.changed; GUI.changed = false;
-	        	script.object_speed = EditorGUILayout.IntField(script.object_speed,GUILayout.Width(50));
-	        	if (GUI.changed)
-	        	{
-	        		if (script.object_speed < 1){script.object_speed = 1;}
-	        		if (script2){script2.object_speed = script.object_speed;}
-	        	}
-	        	GUI.changed = gui_changed_old;
-	        	EditorGUILayout.EndHorizontal();
+//       		EditorGUILayout.BeginHorizontal();
+//	        	GUILayout.Space(15);
+//	        	gui_changed_old = GUI.changed;
+//	        	gui_changed_window = GUI.changed; GUI.changed = false;
+//	        	EditorGUILayout.LabelField("Generate Speed",GUILayout.Width(170));
+//	        	script.generate_speed = EditorGUILayout.IntField(script.generate_speed,GUILayout.Width(50));
+//	        	if (GUI.changed)
+//	        	{
+//	        		if (script.generate_speed < 1){script.generate_speed = 1;}
+//	        		if (script2){script2.generate_speed = script.generate_speed;}
+//	        	}
+//	        	GUI.changed = gui_changed_old;
+//	        	EditorGUILayout.EndHorizontal();
+//	        	
+//	       		EditorGUILayout.BeginHorizontal();
+//	        	GUILayout.Space(15);
+//	        	EditorGUILayout.LabelField("Object Place Speed",GUILayout.Width(170));
+//	        	gui_changed_old = GUI.changed;
+//	        	gui_changed_window = GUI.changed; GUI.changed = false;
+//	        	script.object_speed = EditorGUILayout.IntField(script.object_speed,GUILayout.Width(50));
+//	        	if (GUI.changed)
+//	        	{
+//	        		if (script.object_speed < 1){script.object_speed = 1;}
+//	        		if (script2){script2.object_speed = script.object_speed;}
+//	        	}
+//	        	GUI.changed = gui_changed_old;
+//	        	EditorGUILayout.EndHorizontal();
 	        	
 //	        	EditorGUILayout.BeginHorizontal();
 //		        	GUILayout.Space(15);
@@ -1656,7 +1678,7 @@ class TerrainComposer extends EditorWindow
 		if (global_script.settings.color_scheme_display)
         {
         	EditorGUILayout.BeginHorizontal();
-        	script.settings.color_scheme_display_foldout = EditorGUILayout.Foldout(script.settings.color_scheme_display_foldout,"Color Layout Scheme");
+        	script.settings.color_scheme_display_foldout = EditorGUILayout.Foldout(script.settings.color_scheme_display_foldout,"Interface Colors");
         	if (GUILayout.Button("X",EditorStyles.miniButtonMid,GUILayout.Width(19))) {
         		global_script.settings.color_scheme_display = false;
         	}
@@ -1766,7 +1788,7 @@ class TerrainComposer extends EditorWindow
 	        	
 	        	EditorGUILayout.BeginHorizontal();
 	        	GUILayout.Space(15);
-	        	if (GUILayout.Button("<Default Color Scheme>",GUILayout.Width(163)) && key.shift){load_color_layout();}
+	        	if (GUILayout.Button("<Default Colors>",GUILayout.Width(123)) && key.shift){load_color_layout();}
 	        	
        			EditorGUILayout.EndHorizontal();
 			}
@@ -1778,7 +1800,6 @@ class TerrainComposer extends EditorWindow
 		    script.settings.top_rect = GUILayoutUtility.GetLastRect();
 			script.settings.top_height = script.settings.top_rect.y;
 		}
-		
 		scrollPos = EditorGUILayout.BeginScrollView(scrollPos,GUILayout.Width(Screen.width),GUILayout.Height(0));
 		
 		if (global_script.settings.example_display) {
@@ -1813,6 +1834,7 @@ class TerrainComposer extends EditorWindow
 		   		EditorGUILayout.LabelField("Tiles X",GUILayout.Width(145));
 				GUI.color = Color.white;
 				global_script.settings.exampleTerrainTiles.x = EditorGUILayout.IntSlider(global_script.settings.exampleTerrainTiles.x,1,5);
+				if (script.terrainTileLink) global_script.settings.exampleTerrainTiles.y = global_script.settings.exampleTerrainTiles.x;
 				GUILayout.Space(54);
 			EditorGUILayout.EndHorizontal();
 			
@@ -1827,12 +1849,14 @@ class TerrainComposer extends EditorWindow
 			EditorGUILayout.EndHorizontal();
 			
 			if (GUI.changed) {
-		   		if ((global_script.settings.exampleTerrainTiles.x*global_script.settings.exampleTerrainTiles.y)*Mathf.Pow(2,7+global_script.settings.example_resolution) > 8192) {
-		   			do {
-		   				global_script.settings.exampleTerrainTiles -= new Vector2(1,1);
-		   			}
-		   			while ((global_script.settings.exampleTerrainTiles.x*global_script.settings.exampleTerrainTiles.y)*Mathf.Pow(2,7+global_script.settings.example_resolution) > 8192);
-		   		}
+				if (global_script.settings.restrict_resolutions) {
+			   		if ((global_script.settings.exampleTerrainTiles.x*global_script.settings.exampleTerrainTiles.y)*Mathf.Pow(2,7+global_script.settings.example_resolution) > 8192) {
+			   			do {
+			   				global_script.settings.exampleTerrainTiles -= new Vector2(1,1);
+			   			}
+			   			while ((global_script.settings.exampleTerrainTiles.x*global_script.settings.exampleTerrainTiles.y)*Mathf.Pow(2,7+global_script.settings.example_resolution) > 8192);
+			   		}
+			   	}
 		   	}
 		   	GUI.changed = gui_changed_old;
 		   	
@@ -1894,6 +1918,7 @@ class TerrainComposer extends EditorWindow
 	        GUILayout.Space(153);
 	        if (global_script.settings.example_buttons & 1) {GUI.backgroundColor = Color.green;} else {GUI.backgroundColor = Color.white;}
 	        if (GUILayout.Button("Heightmap",EditorStyles.miniButtonMid,GUILayout.Width(75),GUILayout.Height(19))) {
+	        	if (script.color_output) script.button_export = false;
 	        	script.disable_outputs();
 	        	if (global_script.settings.example_buttons & 1) {global_script.settings.example_buttons = 0;}
 	        	else {
@@ -1905,6 +1930,7 @@ class TerrainComposer extends EditorWindow
 	        }
 	        if (global_script.settings.example_buttons & 2) {GUI.backgroundColor = Color.green;} else {GUI.backgroundColor = Color.white;}
 	        if (GUILayout.Button("Splatmap",EditorStyles.miniButtonMid,GUILayout.Width(75),GUILayout.Height(19))) {
+	        	if (script.color_output) script.button_export = false;
 	        	script.disable_outputs();
 	        	if (global_script.settings.example_buttons & 2) {global_script.settings.example_buttons = 0;}
 	        	else {
@@ -1916,6 +1942,7 @@ class TerrainComposer extends EditorWindow
 	        }
 	        if (global_script.settings.example_buttons & 4) {GUI.backgroundColor = Color.green;} else {GUI.backgroundColor = Color.white;}
 	        if (GUILayout.Button("Trees",EditorStyles.miniButtonMid,GUILayout.Width(75),GUILayout.Height(19))) {
+	        	if (script.color_output) script.button_export = false;
 	        	script.disable_outputs();
 	        	if (global_script.settings.example_buttons & 4) {global_script.settings.example_buttons = 0;}
 	        	else {
@@ -1927,6 +1954,7 @@ class TerrainComposer extends EditorWindow
 	        }
 	        if (global_script.settings.example_buttons & 8) {GUI.backgroundColor = Color.green;} else {GUI.backgroundColor = Color.white;}
 	        if (GUILayout.Button("Grass",EditorStyles.miniButtonMid,GUILayout.Width(75),GUILayout.Height(19))) {
+	        	if (script.color_output) script.button_export = false;
 	        	script.disable_outputs();
 	        	if (global_script.settings.example_buttons & 8) {global_script.settings.example_buttons = 0;}
 	        	else {
@@ -1938,6 +1966,7 @@ class TerrainComposer extends EditorWindow
 	        }
 	        if (global_script.settings.example_buttons & 16) {GUI.backgroundColor = Color.green;} else {GUI.backgroundColor = Color.white;}
 	        if (GUILayout.Button("Object",EditorStyles.miniButtonMid,GUILayout.Width(75),GUILayout.Height(19))) {
+	        	if (script.color_output) script.button_export = false;
 	        	script.disable_outputs();
 	        	if (global_script.settings.example_buttons & 16) {global_script.settings.example_buttons = 0;}
 	        	else {
@@ -2226,6 +2255,8 @@ class TerrainComposer extends EditorWindow
 		    EditorGUILayout.LabelField("Generate",GUILayout.Width(145));
 		    GUI.color = Color.white;
 		    if (GUILayout.Button("Start",GUILayout.Width(145))) {
+				script.button_export = false;
+				Repaint();
 				if (!check_downloaded_examples()) {return;}
 				if (!script.terrains[0].terrain) {
 					this.ShowNotification(GUIContent("Create terrains first by clicking the \n'Create Terrains' button"));
@@ -2268,12 +2299,12 @@ class TerrainComposer extends EditorWindow
 		        		if (key.control) {
 		        			if (!key.shift)
 				    		{
-				    			Undo("Erase Mesh");
+				    			UndoRegister("Erase Mesh");
 				        		script.meshes.RemoveAt(script.meshes.Count-1);
 				    		}
 				    		else
 				    		{
-				    			Undo("Erase Meshes");
+				    			UndoRegister("Erase Meshes");
 				    			script.clear_meshes();
 				    		}
 				    	}
@@ -2387,9 +2418,11 @@ class TerrainComposer extends EditorWindow
     			script.terrainMenuRect = GUILayoutUtility.GetLastRect();
     			script.terrainMenuRect.width = (script.terrain_text.Length*7)-15;
     			script.terrainMenuRect.x += 14;
+    			script.terrainMenuRect.y += script.settings.top_height;
+    			if (script.settings.top_height > 0) script.terrainMenuRect.y += 3;
     		}
     	
-    		if (check_point_in_rect(script.terrainMenuRect,mouse_position - Vector2(-5,script.settings.top_height)) && key.type == EventType.layout)
+    		if (check_point_in_rect(script.terrainMenuRect,mouse_position - Vector2(-5,0)) && key.type == EventType.layout)
 			{
 				if (key.button == 1) {
 					terrainMenu = new GenericMenu ();    
@@ -2452,12 +2485,12 @@ class TerrainComposer extends EditorWindow
 	        		if (key.control) {
 	        			if (!key.shift)
 			    		{
-			    			Undo("Erase Terrain");
+			    			UndoRegister("Erase Terrain");
 	        				script.set_terrain_length(script.terrains.Count-1);
 			    		}
 			    		else
 			    		{
-			    			Undo("Erase Terrains");
+			    			UndoRegister("Erase Terrains");
 			    			script.clear_terrains();
 			    		}
 			    	}
@@ -3910,7 +3943,7 @@ class TerrainComposer extends EditorWindow
 			    if (GUI.changed)
 			    {
 			        gui_changed_old = true;
-			    	if (script.generate_auto){generate_auto();}
+			    	generate_auto();
 			    }
 			    GUI.changed = gui_changed_old;
 		    }
@@ -3934,7 +3967,7 @@ class TerrainComposer extends EditorWindow
 	        	// EditorGUILayout.LabelField("");
 	        	EditorGUILayout.LabelField("Seed",GUILayout.Width(50));
 	        	script.seed = EditorGUILayout.IntField(script.seed,GUILayout.Width(50));
-	        	GUILayout.Space(54);
+	        	// GUILayout.Space(54);
     		EditorGUILayout.EndHorizontal();
     	} else {
     		// GUILayout.Space(19); 
@@ -3943,7 +3976,7 @@ class TerrainComposer extends EditorWindow
 	        	EditorGUILayout.LabelField("");
 	        	EditorGUILayout.LabelField("Seed",GUILayout.Width(50));
 	        	script.seed = EditorGUILayout.IntField(script.seed,GUILayout.Width(50));
-	        	GUILayout.Space(54);
+	        	// GUILayout.Space(54);
         	EditorGUILayout.EndHorizontal();
 		}
         	
@@ -3954,7 +3987,7 @@ class TerrainComposer extends EditorWindow
         	GUI.backgroundColor = Color(0.2,0.4,1);
         	if (script.heightmap_output || script.color_output || script.splat_output || script.tree_output || script.grass_output || script.object_output || script.meshcapture_tool)
         	{
-	        	if (GUILayout.Button(script.button_generate_text,GUILayout.Width(100),GUILayout.Height(20)) || (key.control && key.keyCode == KeyCode.G))
+	        	if (GUILayout.Button(script.button_generate_text,GUILayout.Width(85)) || (key.control && key.keyCode == KeyCode.G))
 	        	{
 	        		if (!script.meshcapture_tool)
 	        		{
@@ -4052,6 +4085,21 @@ class TerrainComposer extends EditorWindow
 	        		}
 	        	}
 	        	
+	        	if (script.generate_auto){GUI.backgroundColor = UnityEngine.Color.green;}
+	     	  	if (GUILayout.Button("Auto",GUILayout.Width(50))) {
+	     	  		if (key.button == 0) {
+			    		script.generate_auto = !script.generate_auto;
+			    		generate_auto();
+			    	}
+			    	else {
+			    		if (script.generate_auto) {
+			    			if (script.generate_auto_mode == 2){script.generate_auto_mode = 1;}
+							else if (script.generate_auto_mode == 1){script.generate_auto_mode = 2;}
+						}
+						script.generate_auto = true;
+			    	}
+			    }
+	        	
 	        	EditorGUILayout.LabelField("-->",EditorStyles.boldLabel,GUILayout.Width(25));
 	        	if (script.heightmap_output){EditorGUILayout.LabelField("Heightmap",EditorStyles.boldLabel,GUILayout.Width(75));}
 	        	if (script.color_output){EditorGUILayout.LabelField("Colormap",EditorStyles.boldLabel,GUILayout.Width(67));}
@@ -4096,58 +4144,23 @@ class TerrainComposer extends EditorWindow
         
         GUI.backgroundColor = UnityEngine.Color(0.2,0.4,1);
         
-        if (!global_script.auto_speed)
-	    {
-			EditorGUILayout.LabelField("Speed",GUILayout.Width(50));
-			GUI.Label(Rect(200,200,200,200),"Speed");
+    	EditorGUILayout.LabelField("Frames",GUILayout.Width(50));
+	    gui_changed_old = GUI.changed;
+	    GUI.changed = false;
+	    global_script.target_frame = EditorGUILayout.IntField(global_script.target_frame,GUILayout.Width(50));
+	    if (GUI.changed) {
 			
-			gui_changed_old = GUI.changed;
-			GUI.changed = false;
-			script.generate_speed = EditorGUILayout.IntField(script.generate_speed,GUILayout.Width(50));
-			if (GUI.changed)
-			{
-				if (script.generate_speed < 1){script.generate_speed = 1;}
-				if (script2)
-		        {
-		        	if (!script.auto_speed){script2.generate_speed = script.generate_speed;}
-		        }
-		    }
-		    GUI.changed = gui_changed_old;
-		}
-		else
-		{
-			EditorGUILayout.LabelField("Frames",GUILayout.Width(50));
-		    gui_changed_old = GUI.changed;
-		    GUI.changed = false;
-		    global_script.target_frame = EditorGUILayout.IntField(global_script.target_frame,GUILayout.Width(50));
-		    if (GUI.changed) {
-				
-		    }
-		    if (global_script.target_frame < 10){global_script.target_frame = 10;}
-		    if (script2)
-		    {
-		    	script2.target_frame = global_script.target_frame;
-		    }
-		}
-	    if (global_script.auto_speed){GUI.backgroundColor = UnityEngine.Color.green;}
-	    if (GUILayout.Button("Auto",GUILayout.Width(50)))
-	    {
-	    	global_script.auto_speed = !global_script.auto_speed;
-	    	if (script2)
-	        {
-	        	script2.auto_speed = global_script.auto_speed;
-	        	
-	        	if (global_script.auto_speed) {
-	        		script2.generate_speed = 1000000;
-	        	}
-	        	else {
-	        		script2.generate_speed = script.generate_speed;
-	        	}
-	        }
-	        
 	    }
+	    if (global_script.target_frame < 10){global_script.target_frame = 10;}
+	    if (script2)
+	    {
+	    	script2.target_frame = global_script.target_frame;
+	    }
+	   
 	    GUI.backgroundColor = UnityEngine.Color.white;
        	EditorGUILayout.EndHorizontal();
+	    
+	    if (!(script.heightmap_output || script.color_output || script.splat_output || script.tree_output || script.grass_output || script.object_output || script.meshcapture_tool)) GUILayout.Space(3); else GUILayout.Space(1);
 	    
 		GUILayout.EndArea();
 		GUILayout.EndVertical();
@@ -4456,7 +4469,7 @@ class TerrainComposer extends EditorWindow
 			if (GUILayout.Button(GUIContent("-",tooltip_text),GUILayout.Width(25)) && script.meshes.Count > 1)
 			{
 				if (key.control) {
-					Undo("Erase Mesh");
+					UndoRegister("Erase Mesh");
 					script.meshes.RemoveAt(index);
 				    this.Repaint();
 					return;
@@ -4612,7 +4625,7 @@ class TerrainComposer extends EditorWindow
 		        		if (GUILayout.Button(GUIContent("-",tooltip_text),GUILayout.Width(25)) && script.terrains.Count > 1)
 				       	{
 				       		if (key.control) {
-				       			Undo("Erase Terrain");
+				       			UndoRegister("Erase Terrain");
 				       			script.erase_terrain(count_terrain);
 					       		this.Repaint();
 						       	return;
@@ -4646,7 +4659,7 @@ class TerrainComposer extends EditorWindow
 		        if (GUILayout.Button(GUIContent("-",tooltip_text),GUILayout.Width(25)) && script.terrains.Count > 1)
 			    {
 			       	if (key.control) {
-			       		Undo("Erase Terrain");
+			       		UndoRegister("Erase Terrain");
 			       		script.erase_terrain(count_terrain);
 				       	this.Repaint();
 					    return;
@@ -5155,9 +5168,9 @@ class TerrainComposer extends EditorWindow
 			        		}
 			        		current_terrain.heightmap_resolution_list = list;
 			        		current_terrain.heightmap_resolution_list = EditorGUILayout.Popup(current_terrain.heightmap_resolution_list,script.heightmap_resolution_list,GUILayout.Width(70));
-			        		if (script.terrains.Count > 1) {
-			        			EditorGUILayout.LabelField("("+(current_terrain.tiles.x*current_terrain.heightmap_resolution).ToString()+")");
-			        		}
+			        		// if (current_terrain.tiles.x > 1 || current_terrain.tiles.y > 1) {
+			        			EditorGUILayout.LabelField("("+(current_terrain.tiles.x*current_terrain.heightmap_resolution).ToString()+"x"+(current_terrain.tiles.y*current_terrain.heightmap_resolution).ToString()+")");
+			        		// }
 			        		EditorGUILayout.EndHorizontal();
 			        		
 			        		EditorGUILayout.BeginHorizontal();
@@ -5172,9 +5185,9 @@ class TerrainComposer extends EditorWindow
 			        		}
 			        		current_terrain.splatmap_resolution_list = list-1;
 			        		current_terrain.splatmap_resolution_list = EditorGUILayout.Popup(current_terrain.splatmap_resolution_list,script.splatmap_resolution_list,GUILayout.Width(70));
-			        		if (script.terrains.Count > 1) {
-			        			EditorGUILayout.LabelField("("+(current_terrain.tiles.x*current_terrain.splatmap_resolution).ToString()+")");
-			        		}
+			        		// if (current_terrain.tiles.x > 1 || current_terrain.tiles.y > 1) {
+			        			EditorGUILayout.LabelField("("+(current_terrain.tiles.x*current_terrain.splatmap_resolution).ToString()+"x"+(current_terrain.tiles.y*current_terrain.splatmap_resolution).ToString()+")");
+			        		// }
 			        		EditorGUILayout.EndHorizontal();
 			        		
 			        		EditorGUILayout.BeginHorizontal();
@@ -5189,9 +5202,9 @@ class TerrainComposer extends EditorWindow
 			        		}
 			        		current_terrain.basemap_resolution_list = list-1;
 			        		current_terrain.basemap_resolution_list = EditorGUILayout.Popup(current_terrain.basemap_resolution_list,script.splatmap_resolution_list,GUILayout.Width(70));
-			        		if (script.terrains.Count > 1) {
-			        			EditorGUILayout.LabelField("("+(current_terrain.tiles.x*current_terrain.basemap_resolution).ToString()+")");
-			        		}
+			        		// if (current_terrain.tiles.x > 1 || current_terrain.tiles.y > 1) {
+			        			EditorGUILayout.LabelField("("+(current_terrain.tiles.x*current_terrain.basemap_resolution).ToString()+"x"+(current_terrain.tiles.y*current_terrain.basemap_resolution).ToString()+")");
+			        		// }
 			        		EditorGUILayout.EndHorizontal();
 			        		
 			        		EditorGUILayout.BeginHorizontal();
@@ -5204,9 +5217,9 @@ class TerrainComposer extends EditorWindow
 			        			if (current_terrain.detail_resolution < 16){current_terrain.detail_resolution = 16;}
 			        			else if (current_terrain.detail_resolution > 2048){current_terrain.detail_resolution = 2048;}
 			        		}
-			        		if (script.terrains.Count > 1) {
-			        			EditorGUILayout.LabelField("("+(current_terrain.tiles.x*current_terrain.detail_resolution).ToString()+")");
-			        		}
+			        		// if (current_terrain.tiles.x > 1 || current_terrain.tiles.y > 1) {
+			        			EditorGUILayout.LabelField("("+(current_terrain.tiles.x*current_terrain.detail_resolution).ToString()+"x"+(current_terrain.tiles.y*current_terrain.detail_resolution).ToString()+")");
+			        		// }
 			        		EditorGUILayout.EndHorizontal();
 			        		
 			        		EditorGUILayout.BeginHorizontal();
@@ -5280,7 +5293,7 @@ class TerrainComposer extends EditorWindow
 			 					        	{
 			 					        		script.set_terrain_settings(current_terrain,"(res)(con)");
 			 					        		script.check_synchronous_terrain_resolutions(current_terrain);
-			 					        		if (script.generate_auto){generate_auto();}
+			 					        		generate_auto();
 			 					        	}
 			 					        }
 			 					        else {
@@ -5317,7 +5330,7 @@ class TerrainComposer extends EditorWindow
 								        		{
 								        			script.set_all_terrain_settings(current_terrain,"(res)");
 								        			script.check_synchronous_terrain_resolutions(current_terrain);
-								        			if (script.generate_auto){generate_auto();}
+								        			generate_auto();
 								        		}
 								        	}
 								        	else {
@@ -5537,6 +5550,13 @@ class TerrainComposer extends EditorWindow
 				        		
 				        		GUILayout.Space(2);
 				        		
+				        		#if !UNITY_3_4 && !UNITY_3_5 && !UNITY_4_0 && !UNITY_4_01 && !UNITY_4_2 && !UNITY_4_3 && !UNITY_4_4 && !UNITY_4_5 && !UNITY_4_6 
+				        		EditorGUILayout.BeginHorizontal();
+				        		GUILayout.Space(75+space);
+				        		EditorGUILayout.LabelField("SpeedTrees have to be setup on the SpeedTree itself");
+				        		EditorGUILayout.EndHorizontal();
+					        	#endif
+				        		
 				        		EditorGUILayout.BeginHorizontal();
 				        		GUILayout.Space(75+space);	
 				        		EditorGUILayout.LabelField("Tree Distance",GUILayout.Width(147));
@@ -5692,7 +5712,7 @@ class TerrainComposer extends EditorWindow
 		        				if (key.control) {
 		        					if (!key.shift)
 			        				{
-			        					Undo("Erase Splat");
+			        					UndoRegister("Erase Splat");
 			        					if (script.settings.colormap) {
 		    								if (current_terrain.splatPrototypes.Count > 1) {
 		    									current_terrain.erase_splatprototype(current_terrain.splatPrototypes.Count-1);
@@ -5704,7 +5724,7 @@ class TerrainComposer extends EditorWindow
 		    						}
 		    						else
 		    						{
-		    							Undo("Erase Splats");
+		    							UndoRegister("Erase Splats");
 			        					if (script.settings.colormap) {
 		    								if (current_terrain.splatPrototypes.Count > 1) {
 		    									current_terrain.splatPrototypes.RemoveRange(1,current_terrain.splatPrototypes.Count-1);
@@ -6010,7 +6030,7 @@ class TerrainComposer extends EditorWindow
 							    			tooltip_text = "Add Splat Texture Preset from saved file";
 							    		}
 								        if (GUILayout.Button(GUIContent("Add",tooltip_text),GUILayout.Width(35))) {
-							        		var path_splat_open2: String = EditorUtility.OpenFilePanel("Open Splat Preset",Application.dataPath+"/TerrainComposer/save/presets/splat","prefab");
+							        		var path_splat_open2: String = EditorUtility.OpenFilePanel("Open Splat Preset",Application.dataPath+install_path.Replace("Assets","")+"/save/presets/splat","prefab");
 								    		
 								    		if (path_splat_open2.Length != 0)
 								    		{
@@ -6067,7 +6087,7 @@ class TerrainComposer extends EditorWindow
 							        	if (GUILayout.Button(GUIContent("-",tooltip_text),GUILayout.Width(25)))
 							        	{
 							        		if (key.control) {
-							        			Undo("Erase Splat");
+							        			UndoRegister("Erase Splat");
 							        			if (script.settings.colormap) {
 				    								if (count_splat != 0) {
 					    								current_terrain.erase_splatprototype(count_splat);
@@ -6203,7 +6223,7 @@ class TerrainComposer extends EditorWindow
 					    			tooltip_text = "Open Splat Texture Preset from saved file";
 					    		}
 					        	if (GUILayout.Button(GUIContent("Open",tooltip_text),GUILayout.Width(75))) {
-					        		var path_splat_open1: String = EditorUtility.OpenFilePanel("Open Splat Preset",Application.dataPath+"/TerrainComposer/save/presets/splat","prefab");
+					        		var path_splat_open1: String = EditorUtility.OpenFilePanel("Open Splat Preset",Application.dataPath+install_path.Replace("Assets","")+"/save/presets/splat","prefab");
 						    		
 						    		if (path_splat_open1.Length != 0)
 						    		{
@@ -6215,7 +6235,7 @@ class TerrainComposer extends EditorWindow
 					    			tooltip_text = "Save Splat Texture Preset";
 					    		}
 					        	if (GUILayout.Button(GUIContent("Save",tooltip_text),GUILayout.Width(75))) {
-									var path_splat_save: String = EditorUtility.SaveFilePanel("Save Splat Preset",Application.dataPath+"/TerrainComposer/save/presets/splat","","prefab");
+									var path_splat_save: String = EditorUtility.SaveFilePanel("Save Splat Preset",Application.dataPath+install_path.Replace("Assets","")+"/save/presets/splat","","prefab");
 						    		
 						    		if (path_splat_save.Length != 0)
 						    		{
@@ -6339,11 +6359,11 @@ class TerrainComposer extends EditorWindow
 		        			{
 		        				if (key.control) {
 			        				if (!key.shift)	{
-			        					Undo("Erase Tree");
+			        					UndoRegister("Erase Tree");
 			        					current_terrain.erase_treeprototype(current_terrain.treePrototypes.Count-1);
 		    						}
 		    						else {
-		    							Undo("Erase Trees");
+		    							UndoRegister("Erase Trees");
 		    							current_terrain.clear_treeprototype();
 		    						}
 		    						script.check_synchronous_terrain_trees(current_terrain);
@@ -6406,7 +6426,7 @@ class TerrainComposer extends EditorWindow
 					    			tooltip_text = "Add Tree Texture Preset from saved file";
 					    		}
 						        if (GUILayout.Button(GUIContent("Add",tooltip_text),GUILayout.Width(35))) {
-					        		var path_tree_open2: String = EditorUtility.OpenFilePanel("Open Tree Preset",Application.dataPath+"/TerrainComposer/save/presets/tree","prefab");
+					        		var path_tree_open2: String = EditorUtility.OpenFilePanel("Open Tree Preset",Application.dataPath+install_path.Replace("Assets","")+"/save/presets/tree","prefab");
 						    		
 						    		if (path_tree_open2.Length != 0)
 						    		{
@@ -6456,7 +6476,7 @@ class TerrainComposer extends EditorWindow
 					        	if (GUILayout.Button(GUIContent("-",tooltip_text),GUILayout.Width(25)))
 					        	{
 					        		if (key.control) {
-					        			Undo("Erase Tree");
+					        			UndoRegister("Erase Tree");
 		    							current_terrain.erase_treeprototype(count_tree);
 		    							script.check_synchronous_terrain_trees(current_terrain);
 						        		this.Repaint();
@@ -6484,15 +6504,15 @@ class TerrainComposer extends EditorWindow
 							    	}
 					        		if (GUILayout.Button(GUIContent(">Set All",tooltip_text),EditorStyles.miniButtonMid,GUILayout.Width(65)))
 					        		{
-					        			Undo("Set All Trees Settings");
+					        			UndoRegister("Set All Trees Settings");
 					        			if (!key.shft)
 					        			{
-					        				if (script.generate_auto){generate_auto();}
+					        				generate_auto();
 	    									script.set_all_trees_settings_terrain(current_terrain,count_tree);
 	    								}
 	    								else
 	    								{
-	    									if (script.generate_auto){generate_auto();}
+	    									generate_auto();
 	    									script.set_all_trees_settings_terrains(current_terrain,count_tree);
 	    								}
 					        		}
@@ -6508,7 +6528,7 @@ class TerrainComposer extends EditorWindow
 					    			tooltip_text = "Open Tree Preset from saved file";
 					    		}
 					        	if (GUILayout.Button(GUIContent("Open",tooltip_text),GUILayout.Width(75))) {
-					        		var path_tree_open1: String = EditorUtility.OpenFilePanel("Open Tree Preset",Application.dataPath+"/TerrainComposer/save/presets/tree","prefab");
+					        		var path_tree_open1: String = EditorUtility.OpenFilePanel("Open Tree Preset",Application.dataPath+install_path.Replace("Assets","")+"/save/presets/tree","prefab");
 						    		
 						    		if (path_tree_open1.Length != 0)
 						    		{
@@ -6521,7 +6541,7 @@ class TerrainComposer extends EditorWindow
 					    			tooltip_text = "Save Tree Texture Preset";
 					    		}
 					        	if (GUILayout.Button(GUIContent("Save",tooltip_text),GUILayout.Width(75))) {
-									var path_tree_save: String = EditorUtility.SaveFilePanel("Save Tree Preset",Application.dataPath+"/TerrainComposer/save/presets/tree","","prefab");
+									var path_tree_save: String = EditorUtility.SaveFilePanel("Save Tree Preset",Application.dataPath+install_path.Replace("Assets","")+"/save/presets/tree","","prefab");
 						    		
 						    		if (path_tree_save.Length != 0)
 						    		{
@@ -6637,12 +6657,12 @@ class TerrainComposer extends EditorWindow
 		        				if (key.control) {
 		        					if (!key.shift)
 			        				{
-			        					Undo("Erase Grass");
+			        					UndoRegister("Erase Grass");
 			        					current_terrain.erase_detailprototype(current_terrain.detailPrototypes.Count-1);
 		    						}
 		    						else
 		    						{
-		    							Undo("Erase Grasses");
+		    							UndoRegister("Erase Grasses");
 		    							current_terrain.clear_detailprototype();
 		    						}
 		    						script.check_synchronous_terrain_detail(current_terrain);
@@ -6718,7 +6738,7 @@ class TerrainComposer extends EditorWindow
 					    			tooltip_text = "Add Grass/Detail Preset from saved file";
 					    		}
 						        if (GUILayout.Button(GUIContent("Add",tooltip_text),GUILayout.Width(35))) {
-					        		var path_grass_open2: String = EditorUtility.OpenFilePanel("Open Grass/Detail Preset",Application.dataPath+"/TerrainComposer/save/presets/grass","prefab");
+					        		var path_grass_open2: String = EditorUtility.OpenFilePanel("Open Grass/Detail Preset",Application.dataPath+install_path.Replace("Assets","")+"/save/presets/grass","prefab");
 						    		
 						    		if (path_grass_open2.Length != 0)
 						    		{
@@ -6766,7 +6786,7 @@ class TerrainComposer extends EditorWindow
 					        	if (GUILayout.Button(GUIContent("-",tooltip_text),GUILayout.Width(25)))
 					        	{
 					        		if (key.control) {
-					        			Undo("Erase Grass");
+					        			UndoRegister("Erase Grass");
 					        			current_terrain.erase_detailprototype(count_detail);
 		    							script.check_synchronous_terrain_detail(current_terrain);
 						        		this.Repaint();
@@ -6874,7 +6894,7 @@ class TerrainComposer extends EditorWindow
 					    			tooltip_text = "Open Grass/Detail Preset from saved file";
 					    		}
 					        	if (GUILayout.Button(GUIContent("Open",tooltip_text),GUILayout.Width(75))) {
-					        		var path_grass_open1: String = EditorUtility.OpenFilePanel("Open Grass/Detail Preset",Application.dataPath+"/TerrainComposer/save/presets/grass","prefab");
+					        		var path_grass_open1: String = EditorUtility.OpenFilePanel("Open Grass/Detail Preset",Application.dataPath+install_path.Replace("Assets","")+"/save/presets/grass","prefab");
 						    		
 						    		if (path_grass_open1.Length != 0)
 						    		{
@@ -6886,7 +6906,7 @@ class TerrainComposer extends EditorWindow
 					    			tooltip_text = "Save grass Texture Preset";
 					    		}
 					        	if (GUILayout.Button(GUIContent("Save",tooltip_text),GUILayout.Width(75))) {
-									var path_grass_save: String = EditorUtility.SaveFilePanel("Save Grass/Detail Preset",Application.dataPath+"/TerrainComposer/save/presets/grass","","prefab");
+									var path_grass_save: String = EditorUtility.SaveFilePanel("Save Grass/Detail Preset",Application.dataPath+install_path.Replace("Assets","")+"/save/presets/grass","","prefab");
 						    		
 						    		if (path_grass_save.Length != 0)
 						    		{
@@ -7139,7 +7159,7 @@ class TerrainComposer extends EditorWindow
 					    			tooltip_text = "Open RTP Preset from saved file";
 					    		}
 					        	if (GUILayout.Button(GUIContent("Open",tooltip_text),GUILayout.Width(75))) {
-					        		var path_rtp_open1: String = EditorUtility.OpenFilePanel("Open RTP Preset",Application.dataPath+"/TerrainComposer/save/presets/RTP","prefab");
+					        		var path_rtp_open1: String = EditorUtility.OpenFilePanel("Open RTP Preset",Application.dataPath+install_path.Replace("Assets","")+"/save/presets/RTP","prefab");
 						    		
 						    		if (path_rtp_open1.Length != 0)
 						    		{
@@ -7152,7 +7172,7 @@ class TerrainComposer extends EditorWindow
 					    				tooltip_text = "Save RTP Preset";
 						    		}
 						        	if (GUILayout.Button(GUIContent("Save",tooltip_text),GUILayout.Width(75))) {
-										var path_rtp_save: String = EditorUtility.SaveFilePanel("Save RTP Preset",Application.dataPath+"/TerrainComposer/save/presets/RTP","","prefab");
+										var path_rtp_save: String = EditorUtility.SaveFilePanel("Save RTP Preset",Application.dataPath+install_path.Replace("Assets","")+"/save/presets/RTP","","prefab");
 							    		
 							    		if (path_rtp_save.Length != 0)
 							    		{
@@ -7432,6 +7452,7 @@ class TerrainComposer extends EditorWindow
 						if (GUI.changed)
 						{
 							if (script.terrainTileLink) script.terrainTiles.y = script.terrainTiles.x;
+							current_terrain.tiles = script.terrainTiles;
 							script.calc_terrain_needed_tiles();
 						}
 						GUI.changed = gui_changed_old;
@@ -7445,9 +7466,11 @@ class TerrainComposer extends EditorWindow
 							if (GUILayout.Button(button_text,GUILayout.Width(150)))
 							{
 								// create_terrain(current_terrain,script.terrain_instances,1+count_terrain,1+count_terrain,script.terrain_path,script.terrain_parent);
-								CreateTerrains(current_terrain,script.terrain_path,script.terrain_parent,script.terrainTiles);
-								// if (script.settings.auto_fit_terrains){fit_all_terrains();}
-								if (script.generate_auto){generate_auto();}
+								if (!check_resolutions_out_of_range(current_terrain)) {
+									CreateTerrains(current_terrain,script.terrain_path,script.terrain_parent,script.terrainTiles);
+									// if (script.settings.auto_fit_terrains){fit_all_terrains();}
+									generate_auto();
+								}
 							}
 //							GUILayout.Space(11);
 //							EditorGUILayout.LabelField("-> Erase TerrainData Assets from Project",GUILayout.Width(250));
@@ -7462,7 +7485,7 @@ class TerrainComposer extends EditorWindow
 //								CreateTerrains(current_terrain,script.terrain_path,script.terrain_parent);
 //								// erase_terrains(script.terrain_instances*-1,script.terrain_asset_erase);
 //								if (script.settings.auto_fit_terrains){fit_all_terrains();}
-//								if (script.generate_auto){generate_auto();}
+//								generate_auto();
 //							}
 //							GUILayout.Space(7);
 //							EditorGUILayout.LabelField("-> Erase TerrainData Assets from Project",GUILayout.Width(250));
@@ -7576,9 +7599,11 @@ class TerrainComposer extends EditorWindow
 			prelayer.menuRect = GUILayoutUtility.GetLastRect();
 			prelayer.menuRect.width = (text.Length*7)-15;
 			prelayer.menuRect.x += 16;
+			prelayer.menuRect.y += script.settings.top_height;
+			if (script.settings.top_height > 0) prelayer.menuRect.y += 3;
 		}
         
-        if (check_point_in_rect(prelayer.menuRect,mouse_position - Vector2(-5,script.settings.top_height)) && key.type == EventType.layout)
+        if (check_point_in_rect(prelayer.menuRect,mouse_position - Vector2(-5,0)) && key.type == EventType.layout)
 		{
 			if (key.button == 1) {
 				menu_prelayer_number = current_prelayer_number;
@@ -7617,23 +7642,23 @@ class TerrainComposer extends EditorWindow
 			{
 				tooltip_text = "Erase the last Layer\n\n(Control Click)";
 			}
-        	if (GUILayout.Button(GUIContent("-",tooltip_text),GUILayout.Width(25)) && prelayer.layer.Count > 0)
-        	{
-        		if (key.control) {
-	        		if (script.description_display)
-	        		{
-	        			if (prelayer.predescription.description[prelayer.predescription.description_position].layer_index.Count > 0)
-	        			{
-	        				erase_layer(prelayer,prelayer.layer.Count-1,prelayer.predescription.description_position,prelayer.predescription.description[prelayer.predescription.description_position].layer_index.Count-1);
-	        				this.Repaint();
-	        				return;
-	        			}
-	        		}
-	        	}
-	        	else {
-					this.ShowNotification(GUIContent("Control click the '-' button to erase"));
-				}
-	        }
+//        	if (GUILayout.Button(GUIContent("-",tooltip_text),GUILayout.Width(25)) && prelayer.layer.Count > 0)
+//        	{
+//        		if (key.control) {
+//	        		if (script.description_display)
+//	        		{
+//	        			if (prelayer.predescription.description[prelayer.predescription.description_position].layer_index.Count > 0)
+//	        			{
+//	        				erase_layer(prelayer,prelayer.layer.Count-1,prelayer.predescription.description_position,prelayer.predescription.description[prelayer.predescription.description_position].layer_index.Count-1);
+//	        				this.Repaint();
+//	        				return;
+//	        			}
+//	        		}
+//	        	}
+//	        	else {
+//					this.ShowNotification(GUIContent("Control click the '-' button to erase"));
+//				}
+//	        }
         	gui_changed_old = GUI.changed;
         	gui_changed_window = GUI.changed; GUI.changed = false;
         	prelayer.layer_output = EditorGUILayout.EnumPopup("",prelayer.layer_output,GUILayout.Width(80));
@@ -7737,7 +7762,7 @@ class TerrainComposer extends EditorWindow
 //			if (GUILayout.Button(GUIContent("<Sort>",tooltip_text),GUILayout.Width(55)))
 //        	{
 //        		if (key.shift) {
-//        			Undo("Sort Layers");
+//        			UndoRegister("Sort Layers");
 //        			script.layers_sort(prelayer);	
 //        		}
 //        		else {
@@ -7825,9 +7850,11 @@ class TerrainComposer extends EditorWindow
 	        			prelayer.predescription.description[count_description].rect = GUILayoutUtility.GetLastRect();
 	        			prelayer.predescription.description[count_description].rect.width = (text1.Length*7)-15;
 	        			prelayer.predescription.description[count_description].rect.x += 14;
+	        			prelayer.predescription.description[count_description].rect.y += script.settings.top_height;
+	        			if (script.settings.top_height > 0) prelayer.predescription.description[count_description].rect.y += 3;
 	        		}
 	        	
-	        		if (check_point_in_rect(prelayer.predescription.description[count_description].rect,mouse_position - Vector2(-5,script.settings.top_height)) && key.type == EventType.layout)
+	        		if (check_point_in_rect(prelayer.predescription.description[count_description].rect,mouse_position - Vector2(-5,0)) && key.type == EventType.layout)
 					{
 						if (key.button == 0 && key.clickCount == 2) {
 							prelayer.predescription.description[count_description].edit = !prelayer.predescription.description[count_description].edit;
@@ -7902,7 +7929,7 @@ class TerrainComposer extends EditorWindow
 		        	if (GUILayout.Button(GUIContent("A",tooltip_text),GUILayout.Width(20)))	
 		        	{
 		        		prelayer.predescription.description[count_description].layers_active = !prelayer.predescription.description[count_description].layers_active;
-						prelayer.change_layers_active_from_description(count_description,key.shift);
+						prelayer.change_layers_active_from_description(count_description,key.shift,script.heightmap_output,script.color_output,script.splat_output,script.tree_output,script.grass_output,script.object_output);
 		        	}
 		        	GUILayout.Space(8);
 		        		
@@ -8016,7 +8043,7 @@ class TerrainComposer extends EditorWindow
 					       	EditorGUILayout.LabelField("All layer content of this Group will be lost. Are you sure?",EditorStyles.boldLabel,GUILayout.Width(389));
 					       	if (GUILayout.Button("Yes",GUILayout.Width(40)))
 					       	{	
-					       		Undo("New LayerGroup");
+					       		UndoRegister("New LayerGroup");
 					       		script.new_layergroup(prelayer,count_description);
 					       		new_description = false;
 					       	}
@@ -8040,17 +8067,15 @@ class TerrainComposer extends EditorWindow
 	        		{
 	        			current_layer_number = count_layer;
 	        			draw_layer(prelayer,prelayer.predescription.description[count_description].layer_index[count_layer],count_layer,count_description,space+15,String.Empty,layer_minimum);
+	        			if (GUI.changed){generate_auto();GUI.changed = false;}
 	        		}
 	        		if (script.description_display && prelayer.predescription.description[count_description].layer_index.Count > 0){GUILayout.Space(5);}
 	        	}
 			}   	                 	                
 	    } 
 	    if (global_script.settings.color_scheme){GUI.color = Color.white;}
-	    if (script.generate_auto)
-		{
-			if (GUI.changed){generate_auto();}
-			GUI.changed = gui_changed_old2;
-		}
+	    
+		GUI.changed = gui_changed_old2;
 	}
 	
 	function draw_remarks(remarks: remarks_class,space: float)
@@ -8146,8 +8171,10 @@ class TerrainComposer extends EditorWindow
 	        	current_layer.rect = GUILayoutUtility.GetLastRect();
 	        	current_layer.rect.width = (text.Length*7)-15;
 	        	current_layer.rect.x += 14;
+	        	current_layer.rect.y += script.settings.top_height;
+	        	if (script.settings.top_height > 0) current_layer.rect.y += 3;
 	        }
-	        if (check_point_in_rect(current_layer.rect,mouse_position - Vector2(-5,script.settings.top_height)) && key.type == EventType.layout)
+	        if (check_point_in_rect(current_layer.rect,mouse_position - Vector2(-5,0)) && key.type == EventType.layout)
 			{
 				if (key.clickCount == 2 && key.button == 0) {
 					current_layer.edit = !current_layer.edit;
@@ -8254,7 +8281,7 @@ class TerrainComposer extends EditorWindow
 				    	{
 				    		script.swap_layer(prelayer,layer_number,prelayer,layer_number-1,true);
 				    		script.layers_sort(prelayer);
-				    		if (script.generate_auto){generate_auto();}
+				    		generate_auto();
 				    		this.Repaint();
 				    		return;
 				    	} 
@@ -8276,7 +8303,7 @@ class TerrainComposer extends EditorWindow
 				        {
 				        	script.swap_layer(prelayer,layer_number,prelayer,layer_number+1,true);
 				        	script.layers_sort(prelayer);
-				        	if (script.generate_auto){generate_auto();}
+				        	generate_auto();
 				        	this.Repaint();
 				        	return;
 				        }
@@ -8296,7 +8323,7 @@ class TerrainComposer extends EditorWindow
 		        if (GUILayout.Button(GUIContent(current_layer.swap_text,tooltip_text),GUILayout.Width(35)))
 		        {
 					swap_layer(current_layer,layer_number,prelayer);
-					if (script.generate_auto){generate_auto();}
+					generate_auto();
 					this.Repaint();
 					return;
 		        } 		
@@ -8308,7 +8335,7 @@ class TerrainComposer extends EditorWindow
 		        if (GUILayout.Button(GUIContent("+",tooltip_text),GUILayout.Width(25)))
 		        {
 		        	add_layer(prelayer,layer_number,count_description,count_layer+1,true);
-		        	if (script.generate_auto){generate_auto();}
+		        	generate_auto();
 		        } 	
 		        if (global_script.settings.tooltip_mode != 0)
 				{
@@ -8318,7 +8345,7 @@ class TerrainComposer extends EditorWindow
 		        {
 		        	if (key.control) {
 			        	erase_layer(prelayer,layer_number,count_description,count_layer);
-			        	if (script.generate_auto){generate_auto();}
+			        	generate_auto();
 			        	this.Repaint();
 			        	return;
 			        }
@@ -8486,20 +8513,18 @@ class TerrainComposer extends EditorWindow
 	           	else if (current_layer.output == layer_output_enum.splat)
 		        {
 		        	EditorGUILayout.BeginHorizontal();
-		           	GUILayout.Space(space+30);
-		           	gui_changed_old = GUI.changed;
-	           		gui_changed_window = GUI.changed; GUI.changed = false;
-		           	current_layer.splat_output.splat_terrain = EditorGUILayout.IntField("Terrain",current_layer.splat_output.splat_terrain,GUILayout.Width(200));
-		           	if (GUI.changed)
-		           	{
-						gui_changed_old = true;           	
-		           		if (current_layer.splat_output.splat_terrain > script.terrains.Count-1){current_layer.splat_output.splat_terrain = script.terrains.Count-1;}
-		           		if (current_layer.splat_output.splat_terrain < 0){current_layer.splat_output.splat_terrain = 0;}
-		           	}
-		           	GUI.changed = gui_changed_old;
-	           		EditorGUILayout.EndHorizontal();
-	           				
-	           		EditorGUILayout.BeginHorizontal();
+	           			GUILayout.Space(space+30);
+	           			gui_changed_old = GUI.changed;
+	           			GUI.changed = false;
+		           		current_layer.splat_output.splat_value.mode = EditorGUILayout.EnumPopup("Slider Mode",current_layer.splat_output.splat_value.mode,GUILayout.Width(300));
+		           		if (GUI.changed) {
+		           			current_layer.splat_output.splat_value.calc_value();
+		           			gui_changed_old = true;
+		           		}
+		           		GUI.changed = gui_changed_old;
+		           	EditorGUILayout.EndHorizontal();
+		           	
+		        	EditorGUILayout.BeginHorizontal();
 	           		GUILayout.Space(space+30);
 		           	current_layer.splat_output.mix_mode = EditorGUILayout.EnumPopup("Mix Mode",current_layer.splat_output.mix_mode,GUILayout.Width(300));
 		           	EditorGUILayout.EndHorizontal();
@@ -8511,24 +8536,15 @@ class TerrainComposer extends EditorWindow
 		        }
 		        else if (current_layer.output == layer_output_enum.tree)
 		        {
-					EditorGUILayout.BeginHorizontal();
-		           	GUILayout.Space(space+30);
-		           	gui_changed_old = GUI.changed;
-		           	gui_changed_window = GUI.changed; GUI.changed = false;
-		           	current_layer.tree_output.tree_terrain = EditorGUILayout.IntField("Terrain",current_layer.tree_output.tree_terrain,GUILayout.Width(200));
-		           	if (GUI.changed)
-		           	{
-		           		gui_changed_old = true;
-		           		if (current_layer.tree_output.tree_terrain > script.terrains.Count-1){current_layer.tree_output.tree_terrain = script.terrains.Count-1;}
-		           		if (current_layer.tree_output.tree_terrain < 0){current_layer.tree_output.tree_terrain = 0;}
-		           	}
-		           	GUI.changed = gui_changed_old;
+		        	EditorGUILayout.BeginHorizontal();
+	           			GUILayout.Space(space+30);
+		           		current_layer.tree_output.tree_value.mode = EditorGUILayout.EnumPopup("Slider Mode",current_layer.tree_output.tree_value.mode,GUILayout.Width(300));
 		           	EditorGUILayout.EndHorizontal();
-		           			
-		           	var tree_output_text: String;
-		           	if (script.terrains[current_layer.tree_output.tree_terrain].terrain)
+		           	
+					var tree_output_text: String;
+		           	if (script.masterTerrain.terrain)
 		           	{
-		           		if (script.terrains[current_layer.tree_output.tree_terrain].terrain.terrainData.treePrototypes.Length == 0)
+		           		if (script.masterTerrain.terrain.terrainData.treePrototypes.Length == 0)
 			           	{
 			           		tree_output_text = " (No trees defined)";
 		        		}
@@ -8538,26 +8554,22 @@ class TerrainComposer extends EditorWindow
 		        else if (current_layer.output == layer_output_enum.grass)
 			    {
 			    	EditorGUILayout.BeginHorizontal();
-			        GUILayout.Space(space+30);
-			        gui_changed_old = GUI.changed;
-			        gui_changed_window = GUI.changed; GUI.changed = false;
-			        current_layer.grass_output.grass_terrain = EditorGUILayout.IntField("Terrain",current_layer.grass_output.grass_terrain,GUILayout.Width(200));
-			        if (GUI.changed)
-			        {
-			        	gui_changed_old = true;
-			        	if (current_layer.grass_output.grass_terrain > script.terrains.Count-1){current_layer.grass_output.grass_terrain = script.terrains.Count-1;}
-			           	if (current_layer.grass_output.grass_terrain < 0){current_layer.grass_output.grass_terrain = 0;}
-			        }
-			        
-			        GUI.changed = gui_changed_old;
-			        EditorGUILayout.EndHorizontal();
-			        
+	           			GUILayout.Space(space+30);
+		           		current_layer.grass_output.grass_value.mode = EditorGUILayout.EnumPopup("Slider Mode",current_layer.grass_output.grass_value.mode,GUILayout.Width(300));
+		           	EditorGUILayout.EndHorizontal();
+		           	   
 			        EditorGUILayout.BeginHorizontal();
 		           	GUILayout.Space(space+30);
 			        current_layer.grass_output.mix_mode = EditorGUILayout.EnumPopup("Mix Mode",current_layer.grass_output.mix_mode,GUILayout.Width(300));
 			        EditorGUILayout.EndHorizontal();
 			        
 			        if (script.settings.remarks){draw_remarks(current_layer.remarks,space+30);}
+		   		}
+		   		else if (current_layer.output == layer_output_enum.object) {
+		   			EditorGUILayout.BeginHorizontal();
+	           			GUILayout.Space(space+30);
+		           		current_layer.object_output.object_value.mode = EditorGUILayout.EnumPopup("Slider Mode",current_layer.object_output.object_value.mode,GUILayout.Width(300));
+		           	EditorGUILayout.EndHorizontal();
 		   		}
 				if (current_layer.output == layer_output_enum.tree || current_layer.output == layer_output_enum.grass || current_layer.output == layer_output_enum.object) {
 					EditorGUILayout.BeginHorizontal();
@@ -8568,17 +8580,7 @@ class TerrainComposer extends EditorWindow
 				}
 				
 				if (current_layer.output == layer_output_enum.grass) {
-					if (script.settings.resolution_density)
-					{
-						if ((current_layer.strength/((script.terrains[current_layer.grass_output.grass_terrain].prearea.resolution*script.settings.resolution_density_conversion)*(script.terrains[current_layer.grass_output.grass_terrain].prearea.resolution*script.settings.resolution_density_conversion)))*script.settings.grass_density < 1)
-						{
-							GUI.backgroundColor = Color.red;				
-						}
-					}
-					else
-					{
-						if (current_layer.strength*script.settings.grass_density < 1){GUI.backgroundColor = Color.red;}
-					}
+					if (current_layer.strength*script.settings.grass_density < 1){GUI.backgroundColor = Color.red;}
 				}
 				
 				//if (current_layer.output != layer_output_enum.color) {
@@ -8589,6 +8591,7 @@ class TerrainComposer extends EditorWindow
 					current_layer.strength = EditorGUILayout.Slider(current_layer.strength,0,1);
 					EditorGUILayout.EndHorizontal();
 				// }
+				GUI.backgroundColor = Color.white;
 				
 				if (current_layer.output == layer_output_enum.tree) {
 		            EditorGUILayout.BeginHorizontal(); 
@@ -8629,14 +8632,14 @@ class TerrainComposer extends EditorWindow
 	           			{
 	           				current_layer.color_output.set_precolor_range_length(current_layer.color_output.precolor_range.Count+1);
 	           				current_layer.color_output.precolor_range[current_layer.color_output.precolor_range.Count-1].one_color = true;
-	           				if (script.generate_auto){generate_auto();}
+	           				generate_auto();
 	           			}
         				if (GUILayout.Button("-",GUILayout.Width(25)) && current_layer.color_output.precolor_range.Count > 1)
         				{
         					if (key.control) {
-        						Undo("Erase ColorGroup");
+        						UndoRegister("Erase ColorGroup");
         						current_layer.color_output.set_precolor_range_length(current_layer.color_output.precolor_range.Count-1);
-		    					if (script.generate_auto){generate_auto();}
+		    					generate_auto();
 		    				}
 		    				else {
 								this.ShowNotification(GUIContent("Control click the '-' button to erase"));
@@ -8664,7 +8667,7 @@ class TerrainComposer extends EditorWindow
 				        EditorGUILayout.LabelField("Mix rate",GUILayout.Width(147));
 				        gui_changed_old = GUI.changed;
 				        gui_changed_window = GUI.changed; GUI.changed = false;
-				        current_layer.splat_output.mix[0] = EditorGUILayout.Slider(current_layer.splat_output.mix[0],0,1);
+				        current_layer.splat_output.mix[0] = EditorGUILayout.Slider(current_layer.splat_output.mix[0],0,10);
 				        if (GUI.changed)
 				        {
 				        	gui_changed_old = true;
@@ -8677,9 +8680,7 @@ class TerrainComposer extends EditorWindow
 					
 		           	var splat_text: String;
 		           	
-		           	if (current_layer.splat_output.splat_terrain > script.terrains.Count-1){current_layer.splat_output.splat_terrain = script.terrains.Count-1;}		
-		           							
-		            if (script.terrains[current_layer.splat_output.splat_terrain].splatPrototypes.Count == 0)
+		           	if (script.masterTerrain.splatPrototypes.Count == 0)
 			        {
 				    	splat_text = " --> Please assign splat textures to the ";
 				        if (script.terrains.Count > 1){splat_text += "Terrains.";} else {splat_text += "Terrain.";}
@@ -8700,23 +8701,23 @@ class TerrainComposer extends EditorWindow
 			           	GUILayout.Space(space+45);
 			           	if (GUILayout.Button("+",GUILayout.Width(25)))
 			           	{
-			           		add_splat(current_layer.splat_output,current_layer.splat_output.splat.Count-1,current_layer.splat_output.splat_terrain,key.shift);
-			           		if (script.generate_auto){generate_auto();}
+			           		add_splat(current_layer.splat_output,current_layer.splat_output.splat.Count-1,key.shift);
+			           		generate_auto();
 			           	}
 		        		if (GUILayout.Button("-",GUILayout.Width(25)) && current_layer.splat_output.splat.Count > 0)
 		        		{
 		        			if (key.control) {
 			        			if (!key.shift)
 			        			{
-			        				Undo("Erase Splat");
+			        				UndoRegister("Erase Splat");
 			        				current_layer.splat_output.erase_splat(current_layer.splat_output.splat.Count-1);
 			        			}
 			        			else
 			        			{
-			        				Undo("Erase Splats");
+			        				UndoRegister("Erase Splats");
 			        				current_layer.splat_output.clear_splat();
 			        			}
-			        			if (script.generate_auto){generate_auto();}
+			        			generate_auto();
 			        			this.Repaint();
 			        			return;
 			        		}
@@ -8724,12 +8725,14 @@ class TerrainComposer extends EditorWindow
 								this.ShowNotification(GUIContent("Control click the '-' button to erase"));
 							}
 		        		} 
-		        						
+		        		if (GUILayout.Button("F",GUILayout.Width(20))) current_layer.splat_output.FoldAllSplatCustom(key.shift);
+		        		if (GUILayout.Button("R",GUILayout.Width(25))) {current_layer.splat_output.splat_value.reset_values();generate_auto();}
+			        					
 						EditorGUILayout.EndHorizontal();
 				        
 				       
 					   	GUILayout.Space(5);
-					    for (count_splat = 0;count_splat < current_layer.splat_output.splat.Count;++count_splat)
+					    for (var count_splat: int = 0;count_splat < current_layer.splat_output.splat.Count;++count_splat)
 	           			{
 	           				if (global_script.settings.color_scheme)
 	           				{
@@ -8743,91 +8746,163 @@ class TerrainComposer extends EditorWindow
 								EditorGUILayout.BeginHorizontal();
 						
 								// splat text
-								if (current_layer.splat_output.splat[count_splat] < script.terrains[current_layer.splat_output.splat_terrain].splatPrototypes.Count)
+								if (current_layer.splat_output.splat[count_splat] < script.masterTerrain.splatPrototypes.Count)
 								{
-									EditorGUILayout.LabelField(""+count_splat+").",GUILayout.Width(27));
-									GUILayout.Space(50);
-									if (key.type == EventType.Repaint){splatRect = GUILayoutUtility.GetLastRect();}
-									if (script.terrains[current_layer.splat_output.splat_terrain].splatPrototypes[current_layer.splat_output.splat[count_splat]].texture) {
-										EditorGUI.DrawPreviewTexture(Rect(splatRect.x,splatRect.y,50,50),script.terrains[current_layer.splat_output.splat_terrain].splatPrototypes[current_layer.splat_output.splat[count_splat]].texture);
-									}
+//									EditorGUILayout.LabelField(""+count_splat+").",GUILayout.Width(27));
+//									GUILayout.Space(50);
+//									if (key.type == EventType.Repaint){splatRect = GUILayoutUtility.GetLastRect();}
+//									if (script.masterTerrain.splatPrototypes[current_layer.splat_output.splat[count_splat]].texture) {
+//										EditorGUI.DrawPreviewTexture(Rect(splatRect.x,splatRect.y,50,50),script.masterTerrain.splatPrototypes[current_layer.splat_output.splat[count_splat]].texture);
+//									}
 									// EditorGUILayout.LabelField(GUIContent(),GUILayout.Width(50),GUILayout.Height(50));
+									
+									EditorGUILayout.LabelField(""+count_splat+").",GUILayout.Width(23));
+									// EditorGUILayout.LabelField(GUIContent(script.masterTerrain.splatPrototypes[current_layer.splat_output.splat[count_splat]].texture),GUILayout.Width(50),GUILayout.Height(50));
+									if (script.masterTerrain.splatPrototypes.Count-1 >= current_layer.splat_output.splat[count_splat]){
+										if (script.masterTerrain.splatPrototypes[current_layer.splat_output.splat[count_splat]].texture) {
+											if (GUILayout.Button(String.Empty,GUILayout.Width(81),GUILayout.Height(80)))
+											{
+												if (!current_layer.splat_output.splat_custom[count_splat].custom) {
+													create_preview_window(script.masterTerrain.splatPrototypes[current_layer.splat_output.splat[count_splat]].texture,"Splat Mix");
+												}
+												else {
+													create_preview_window(script.masterTerrain,current_layer.splat_output.splat_custom[count_splat]);
+												}
+												GUI.changed = false;
+											}
+											if (key.type == EventType.Repaint){current_layer.splat_output.rect = GUILayoutUtility.GetLastRect();}
+											// if (key.type == EventType.Repaint){current_layer.splat_output.rect1 = GUILayoutUtility.GetLastRect();}
+											
+											if (!current_layer.splat_output.splat_custom[count_splat].custom) {
+												if (script.masterTerrain.splatPrototypes[current_layer.splat_output.splat[count_splat]].texture) {
+													EditorGUI.DrawPreviewTexture(Rect(current_layer.splat_output.rect.x+3,current_layer.splat_output.rect.y+3,75,75),script.masterTerrain.splatPrototypes[current_layer.splat_output.splat[count_splat]].texture);
+												}
+											}
+											else
+											{
+//												if (!current_layer.splat_output.splat_custom[count_splat].texture)
+//												{
+//													current_layer.splat_output.splat_custom[count_splat].calc_splat_value(script.masterTerrain,global_script.splat_custom_texture_resolution1,current_layer.splat_output.splat[count_splat]);
+//												}
+												current_layer.splat_output.splat_custom[count_splat].CalcTotalValue();
+												
+												for (var i: int = 0;i < current_layer.splat_output.splat_custom[count_splat].value.Count;++i) {
+													GUI.color = new Color(1,1,1,current_layer.splat_output.splat_custom[count_splat].value[i]/current_layer.splat_output.splat_custom[count_splat].totalValue);
+													if (GUI.color.a > 0) {
+														if (script.masterTerrain.splatPrototypes[current_layer.splat_output.splat[count_splat]].texture) {
+															EditorGUI.DrawPreviewTexture(Rect(current_layer.splat_output.rect.x+3,current_layer.splat_output.rect.y+3.5,75,75),script.masterTerrain.splatPrototypes[i].texture);
+														}
+													}
+												}
+												GUI.color = Color.white;
+											}
+											// GUILayout.Space(38);
+//											if (global_script.preview_texture && script.settings.use_splat_color)  
+//								        	{
+//								        		gui_changed_old = GUI.changed;
+//								        		GUI.changed = false;
+//								        		script.settings.splat_colors[count_splat] = EditorGUI.ColorField(Rect(current_layer.splat_output.rect1.x+63,current_layer.splat_output.rect1.y+20,40,16),script.settings.splat_colors[count_splat]);
+//								        		if (GUI.changed)
+//								        		{
+//								        			// if (global_script.preview_texture){set_layer_preview(current_prelayer_number,current_layer_number);}
+//								        		}
+//								        		GUI.changed = gui_changed_old;
+//								        	}
+										} 
+									}
 								}
 								else {
 									//EditorGUILayout.BeginHorizontal();
-									EditorGUILayout.LabelField(""+count_splat+").",GUILayout.Width(27));
-									GUILayout.Space(50);
+									EditorGUILayout.LabelField(""+count_splat+").",GUILayout.Width(24));
+									// GUILayout.Space(50);
 									if (key.type == EventType.Repaint){splatRect = GUILayoutUtility.GetLastRect();}
 									
-									GUI.Button(Rect(splatRect.x,splatRect.y,50,50),"Empty",EditorStyles.miniButtonMid);
+									GUILayout.Button("Empty",GUILayout.Width(80),GUILayout.Height(80));
+									
 									//EditorGUILayout.EndHorizontal();
 								}
-								gui_changed_old = GUI.changed;
-								gui_changed_window = GUI.changed; GUI.changed = false;
-								current_layer.splat_output.splat[count_splat] = EditorGUILayout.IntField(current_layer.splat_output.splat[count_splat],GUILayout.Width(25));
-								if (GUILayout.Button("+",GUILayout.Width(25)))
-								{
-									if (!key.shift)
-									{
-										current_layer.splat_output.splat[count_splat] += 1;
-									}
-									else
-									{
-										if (count_splat > 0){current_layer.splat_output.splat[count_splat] = current_layer.splat_output.splat[count_splat-1]+1;}
-										else {current_layer.splat_output.splat[count_splat] += 1;}
-									}
-									GUI.changed = true;
-								}
-								if (GUILayout.Button("-",GUILayout.Width(25)))
-								{
-									current_layer.splat_output.splat[count_splat] -= 1;
-									GUI.changed = true;
-								}
 								
-								if (GUI.changed)
+//								if (!current_layer.splat_output.mix_overview)
+//								{
+//									gui_changed_old = GUI.changed;
+//			           				gui_changed_window = GUI.changed; GUI.changed = false;
+//									current_layer.splat_output.splat_value.value[count_splat] = EditorGUILayout.Slider(current_layer.splat_output.splat_value.value[count_splat],1,100);
+//									if (global_script.settings.tooltip_mode != 0)
+//						        	{
+//						        		tooltip_text = "Center this value to 50";
+//						        	}
+//									if (GUILayout.Button(GUIContent("C",tooltip_text),GUILayout.Width(25)))
+//									{
+//										current_layer.splat_output.splat_value.value[count_splat] = 50;
+//										GUI.changed = true;
+//										generate_auto();
+//									}
+//									EditorGUILayout.LabelField(current_layer.splat_output.splat_value.text[count_splat],GUILayout.Width(90));
+//									if (GUI.changed)
+//									{
+//										gui_changed_old = true;
+//										current_layer.splat_output.splat_value.calc_value();
+//									}
+//									GUI.changed = gui_changed_old;
+//								}
+								GUILayout.Space(15);
+								if (key.type == EventType.Repaint){current_layer.splat_output.splat_custom[count_splat].rect = GUILayoutUtility.GetLastRect();}
+								
+								gui_changed_old = GUI.changed;
+								current_layer.splat_output.splat_custom[count_splat].foldout = EditorGUI.Foldout(Rect(current_layer.splat_output.splat_custom[count_splat].rect.x+2,current_layer.splat_output.splat_custom[count_splat].rect.y+2,15,19),current_layer.splat_output.splat_custom[count_splat].foldout,String.Empty);
+								GUI.changed = gui_changed_old;
+								if (!current_layer.splat_output.splat_custom[count_splat].custom)
 								{
-									if (current_layer.splat_output.splat[count_splat] < 0)
+									gui_changed_old = GUI.changed;
+									gui_changed_window = GUI.changed; 
+									GUI.changed = false;
+									current_layer.splat_output.splat[count_splat] = EditorGUILayout.IntField(current_layer.splat_output.splat[count_splat],GUILayout.Width(25));
+									if (GUILayout.Button("+",GUILayout.Width(25)))
 									{
-										current_layer.splat_output.splat[count_splat] = 0;
-									}
-									if (current_layer.splat_output.splat[count_splat] > script.terrains[current_layer.splat_output.splat_terrain].splatPrototypes.Count-1)
-									{
-										if (script.terrains[current_layer.splat_output.splat_terrain].splatPrototypes.Count > 0)
+										if (!key.shift)
 										{
-											current_layer.splat_output.splat[count_splat] = script.terrains[current_layer.splat_output.splat_terrain].splatPrototypes.Count-1;
+											current_layer.splat_output.splat[count_splat] += 1;
 										}
 										else
 										{
-											current_layer.splat_output.splat[count_splat] = 0;
+											if (count_splat > 0){current_layer.splat_output.splat[count_splat] = current_layer.splat_output.splat[count_splat-1]+1;}
+											else {current_layer.splat_output.splat[count_splat] += 1;}
 										}
-									}
-									if (script.generate_auto){generate_auto();}
-								}
-								GUI.changed = gui_changed_old;
-								
-								if (!current_layer.splat_output.mix_overview)
-								{
-									gui_changed_old = GUI.changed;
-			           				gui_changed_window = GUI.changed; GUI.changed = false;
-									current_layer.splat_output.splat_value.value[count_splat] = EditorGUILayout.Slider(current_layer.splat_output.splat_value.value[count_splat],1,100);
-									if (global_script.settings.tooltip_mode != 0)
-						        	{
-						        		tooltip_text = "Center this value to 50";
-						        	}
-									if (GUILayout.Button(GUIContent("C",tooltip_text),GUILayout.Width(25)))
-									{
-										current_layer.splat_output.splat_value.value[count_splat] = 50;
 										GUI.changed = true;
-										if (script.generate_auto){generate_auto();}
 									}
-									EditorGUILayout.LabelField(current_layer.splat_output.splat_value.text[count_splat],GUILayout.Width(90));
+									if (GUILayout.Button("-",GUILayout.Width(25)))
+									{
+										current_layer.splat_output.splat[count_splat] -= 1;
+										GUI.changed = true;
+									}
+									
 									if (GUI.changed)
 									{
-										gui_changed_old = true;
-										current_layer.splat_output.splat_value.calc_value();
+										if (current_layer.splat_output.splat[count_splat] < 0)
+										{
+											current_layer.splat_output.splat[count_splat] = 0;
+										}
+										if (current_layer.splat_output.splat[count_splat] > script.masterTerrain.splatPrototypes.Count-1)
+										{
+											if (script.masterTerrain.splatPrototypes.Count > 0)
+											{
+												current_layer.splat_output.splat[count_splat] = script.masterTerrain.splatPrototypes.Count-1;
+											}
+											else
+											{
+												current_layer.splat_output.splat[count_splat] = 0;
+											}
+										}
+										generate_auto();
 									}
 									GUI.changed = gui_changed_old;
 								}
+								else
+								{
+									EditorGUILayout.LabelField("Custom",GUILayout.Width(83));
+									//GUILayout.Space(87);
+								}
+								DrawValueSlider(current_layer.splat_output.splat_value,count_splat,true);
 								EditorGUILayout.EndHorizontal();
 							}
 														
@@ -8842,6 +8917,7 @@ class TerrainComposer extends EditorWindow
 					        if (GUI.changed)
 					        {
 					        	gui_changed_old = true;
+					        	current_layer.splat_output.splat_value.Active(count_splat);
 					        	current_layer.splat_output.splat_value.calc_value();
 					        	current_layer.splat_output.set_splat_curve();
 		           			}
@@ -8853,7 +8929,7 @@ class TerrainComposer extends EditorWindow
 		           			    if (GUILayout.Button("▲",GUILayout.Width(25)))
 		           			    {
 		           			    	current_layer.splat_output.swap_splat(count_splat,count_splat-1);
-		           			    	if (script.generate_auto){generate_auto();}
+		           			    	generate_auto();
 		           			    } 		 
 		           			}
 		           			else {
@@ -8863,7 +8939,7 @@ class TerrainComposer extends EditorWindow
 		           			    if (GUILayout.Button("▼",GUILayout.Width(25)))
 		           			    {
 		           			    	current_layer.splat_output.swap_splat(count_splat,count_splat+1);
-		           			    	if (script.generate_auto){generate_auto();}
+		           			    	generate_auto();
 		           			    } 		 
 		           			}
 		           			else {
@@ -8871,14 +8947,14 @@ class TerrainComposer extends EditorWindow
 		           			}
 	           			    if (GUILayout.Button("+",GUILayout.Width(25)))
 	           			    {
-	           			    	add_splat(current_layer.splat_output,count_splat,current_layer.splat_output.splat_terrain,key.shift);
-	           			    	if (script.generate_auto){generate_auto();}
+	           			    	add_splat(current_layer.splat_output,count_splat,key.shift);
+	           			    	generate_auto();
 	           			    } 		 
 	           			    if (GUILayout.Button("-",GUILayout.Width(25)) && current_layer.splat_output.splat.Count > 0)
 	           			    {
 	           			    	if (key.control) {
 		           			    	current_layer.splat_output.erase_splat(count_splat);
-		           			    	if (script.generate_auto){generate_auto();}
+		           			    	generate_auto();
 		           			     	this.Repaint();
 		           			     	return;
 		           			    }
@@ -8887,6 +8963,66 @@ class TerrainComposer extends EditorWindow
 								}
 	           			    } 		 
 	           				EditorGUILayout.EndHorizontal();
+	           				
+	           				if (current_layer.splat_output.splat_custom[count_splat].foldout)
+	           				{
+	           					EditorGUILayout.BeginHorizontal();
+	           					GUILayout.Space(space+90);
+	           					EditorGUILayout.LabelField("Custom",GUILayout.Width(100));
+	           					gui_changed_old = GUI.changed;
+	           					GUI.changed = false;
+	           					current_layer.splat_output.splat_custom[count_splat].custom = EditorGUILayout.Toggle(current_layer.splat_output.splat_custom[count_splat].custom,GUILayout.Width(25));
+	           					if (GUI.changed)
+	           					{
+	           						gui_changed_old = true;
+	           						if (current_layer.splat_output.splat_custom[count_splat].custom)
+	           						{
+	           							current_layer.splat_output.splat_custom[count_splat].CalcTotalValue();
+	           						}
+	           						// if (preview_windows.Count > 0) {preview_windows_repaint();}
+	           					}
+	           					GUI.changed = gui_changed_old;
+	           					EditorGUILayout.EndHorizontal();
+	           					
+	           					var count_splat2: int;
+	           					
+//	           					if (current_layer.splat_output.splat_custom[count_splat].value.Count < script.masterTerrain.splatPrototypes.Count)
+//	           					{
+//	           						var splat_length: int = script.masterTerrain.splatPrototypes.Count-current_layer.splat_output.splat_custom[count_splat].value1.Count;
+//	           						
+//	           						for (count_splat2 = 0;count_splat2 < splat_length;++count_splat2)
+//	           						{
+//	           							current_layer.splat_output.splat_custom[count_splat].value.Add(0);
+//	           						}
+//	           					}
+	           					
+	           					for (count_splat2 = 0;count_splat2 < current_layer.splat_output.splat_custom[count_splat].value.Count;++count_splat2)
+	           					{
+	           						EditorGUILayout.BeginHorizontal();
+	           						GUILayout.Space(space+90);
+	           						EditorGUILayout.LabelField("Splat"+count_splat2.ToString(),GUILayout.Width(100));
+	           						if (key.type == EventType.Repaint){current_layer.splat_output.splat_custom[count_splat].rect3 = GUILayoutUtility.GetLastRect();}
+	           						if (script.masterTerrain.splatPrototypes.Count-1 >= count_splat2) {
+	           							if (script.masterTerrain.splatPrototypes[count_splat2].texture) {
+	           								EditorGUI.DrawPreviewTexture(Rect(current_layer.splat_output.splat_custom[count_splat].rect3.x+60,current_layer.splat_output.splat_custom[count_splat].rect3.y-2,25,25),script.masterTerrain.splatPrototypes[count_splat2].texture);
+	           							}
+	           						}
+	           						gui_changed_old = GUI.changed;
+	           						GUI.changed = false;
+	           						current_layer.splat_output.splat_custom[count_splat].value[count_splat2] = EditorGUILayout.Slider(current_layer.splat_output.splat_custom[count_splat].value[count_splat2],0,1,GUILayout.Width(200));
+	           						if (GUI.changed)
+	           						{
+	           							gui_changed_old = true;
+	           							current_layer.splat_output.splat_custom[count_splat].CalcTotalValue();
+	           							current_layer.splat_output.splat_custom[count_splat].changed = true;
+	           							// if (preview_windows.Count > 0) {preview_windows_repaint();}
+	           						}
+	           						GUI.changed = gui_changed_old;
+	           						// GUILayout.Space(25);
+	           						EditorGUILayout.EndHorizontal();
+	           						GUILayout.Space(9);
+	           					}
+	           				}
 	           				 
 	           				if (global_script.settings.color_scheme)
 	           				{
@@ -8915,8 +9051,8 @@ class TerrainComposer extends EditorWindow
 					           	if (global_script.settings.color_scheme){GUI.color = color_splat;}
 					           	GUILayout.Space(16);
 					         }
-					         else {// if (current_layer.splat_output.splat[count_splat] < script.terrains[current_layer.splat_output.splat_terrain].splatPrototypes.Count) {
-					         	GUILayout.Space(33);
+					         else {// if (current_layer.splat_output.splat[count_splat] < script.masterTerrain.splatPrototypes.Count) {
+					         	// GUILayout.Space(33);
 					         }
 					    }
 					    // splat for end
@@ -8943,8 +9079,8 @@ class TerrainComposer extends EditorWindow
 			           	GUILayout.Space(space+45);
 		        		if (GUILayout.Button("+",GUILayout.Width(25)))
 		        		{
-		        			add_tree(current_layer.tree_output.tree.Count-1,current_layer.tree_output,current_layer.tree_output.tree_terrain);
-		        			if (script.generate_auto){generate_auto();}
+		        			add_tree(current_layer.tree_output.tree.Count-1,current_layer.tree_output);
+		        			generate_auto();
 		        		}
 		        		if (GUILayout.Button("-",GUILayout.Width(25)))
 		        		{
@@ -8955,10 +9091,10 @@ class TerrainComposer extends EditorWindow
 			        			}
 			        			else
 			        			{
-			        				Undo("Erase Trees");
+			        				UndoRegister("Erase Trees");
 			        				current_layer.tree_output.clear_tree(script);
 			        			}
-			        			if (script.generate_auto){generate_auto();}
+			        			generate_auto();
 			        			this.Repaint();
 			        			return;
 			        		}
@@ -8973,10 +9109,12 @@ class TerrainComposer extends EditorWindow
 								current_layer.tree_output.trees_foldout = !current_layer.tree_output.trees_foldout;
 								script.change_trees_foldout(current_layer.tree_output,key.shift);
 							}
+							
+							if (GUILayout.Button("R",GUILayout.Width(25))) {current_layer.tree_output.tree_value.reset_values();generate_auto();}
+							
 							EditorGUILayout.LabelField("");
-			        		if (GUILayout.Button("A",GUILayout.Width(20)))
-							{
-								current_layer.tree_output.trees_active = !current_layer.tree_output.trees_active;
+			        		if (GUILayout.Button("A",GUILayout.Width(20))) {
+								if (!key.shift) current_layer.tree_output.trees_active = !current_layer.tree_output.trees_active;
 								script.change_trees_active(current_layer.tree_output,key.shift);
 							}
 							GUILayout.Space(163);
@@ -8995,7 +9133,7 @@ class TerrainComposer extends EditorWindow
 //						}
 						EditorGUILayout.EndHorizontal();
 			            
-			            for (count_tree = 0;count_tree < current_layer.tree_output.tree.Count;++count_tree)
+			            for (var count_tree: int = 0;count_tree < current_layer.tree_output.tree.Count;++count_tree)
 		           		{
 		           	   		var current_tree: tree_class = current_layer.tree_output.tree[count_tree];
 		           	   		current_tree_number = count_tree;
@@ -9030,22 +9168,22 @@ class TerrainComposer extends EditorWindow
 							// if (current_layer.tree_output.icon_display)
 	        				// {
 		        				GUI.color = Color.white;
-		        				if (current_tree.prototypeindex < script.terrains[current_layer.tree_output.tree_terrain].treePrototypes.Count)
+		        				if (current_tree.prototypeindex < script.masterTerrain.treePrototypes.Count)
 		        				{
-			        				if (!script.terrains[current_layer.tree_output.tree_terrain].treePrototypes[current_tree.prototypeindex].prefab){GUILayout.Button(GUIContent("Empty"),EditorStyles.miniButtonMid,GUILayout.Width(64),GUILayout.Height(64));}
+			        				if (!script.masterTerrain.treePrototypes[current_tree.prototypeindex].prefab){GUILayout.Button(GUIContent("Empty"),EditorStyles.miniButtonMid,GUILayout.Width(64),GUILayout.Height(64));}
 							       	else
 							       	{
 										#if !UNITY_3_4 && !UNITY_3_5
-									    script.terrains[current_layer.tree_output.tree_terrain].treePrototypes[current_tree.prototypeindex].texture = AssetPreview.GetAssetPreview(script.terrains[current_layer.tree_output.tree_terrain].treePrototypes[current_tree.prototypeindex].prefab);
+									    script.masterTerrain.treePrototypes[current_tree.prototypeindex].texture = AssetPreview.GetAssetPreview(script.masterTerrain.treePrototypes[current_tree.prototypeindex].prefab);
 										#else
-									    script.terrains[current_layer.tree_output.tree_terrain].treePrototypes[current_tree.prototypeindex].texture = EditorUtility.GetAssetPreview(script.terrains[current_layer.tree_output.tree_terrain].treePrototypes[current_tree.prototypeindex].prefab);
+									    script.masterTerrain.treePrototypes[current_tree.prototypeindex].texture = EditorUtility.GetAssetPreview(script.masterTerrain.treePrototypes[current_tree.prototypeindex].prefab);
 									    #endif
 							        	
 							        	if (global_script.settings.tooltip_mode == 2)
 										{
 											tooltip_text = "Click to preview\n\nClick again to close preview";
 										} else {tooltip_text = "";}
-							        	if (GUILayout.Button(GUIContent(script.terrains[current_layer.tree_output.tree_terrain].treePrototypes[current_tree.prototypeindex].texture,tooltip_text),EditorStyles.miniButtonMid,GUILayout.Width(64),GUILayout.Height(64))){create_preview_window(script.terrains[current_layer.tree_output.tree_terrain].treePrototypes[current_tree.prototypeindex].texture,"Tree Preview");}
+							        	if (GUILayout.Button(GUIContent(script.masterTerrain.treePrototypes[current_tree.prototypeindex].texture,tooltip_text),EditorStyles.miniButtonMid,GUILayout.Width(64),GUILayout.Height(64))){create_preview_window(script.masterTerrain.treePrototypes[current_tree.prototypeindex].texture,"Tree Preview");}
 							        	
 							        	GUI.color = UnityEngine.Color.green;
 							        	if (key.type == EventType.Repaint){countRect = GUILayoutUtility.GetLastRect();}
@@ -9060,11 +9198,11 @@ class TerrainComposer extends EditorWindow
 							// }
 							
 								var tree_text: String = "Not Assigned";
-								if (current_tree.prototypeindex < script.terrains[current_layer.tree_output.tree_terrain].treePrototypes.Count)
+								if (current_tree.prototypeindex < script.masterTerrain.treePrototypes.Count)
 								{
-									if (script.terrains[current_layer.tree_output.tree_terrain].treePrototypes[current_tree.prototypeindex].prefab)
+									if (script.masterTerrain.treePrototypes[current_tree.prototypeindex].prefab)
 									{
-										tree_text = script.terrains[current_layer.tree_output.tree_terrain].treePrototypes[current_tree.prototypeindex].prefab.name;
+										tree_text = script.masterTerrain.treePrototypes[current_tree.prototypeindex].prefab.name;
 										if (tree_text.Length > 8){tree_text = tree_text.Substring(0,6);}
 									}
 								}
@@ -9087,7 +9225,7 @@ class TerrainComposer extends EditorWindow
 								gui_changed_old = GUI.changed;
 								current_tree.foldout = EditorGUILayout.Foldout(current_tree.foldout,tree_text);
 								GUI.changed = gui_changed_old;
-								GUILayout.Space(85);
+								GUILayout.Space(35);
 								
 								gui_changed_old = GUI.changed;
 								gui_changed_window = GUI.changed; GUI.changed = false;
@@ -9113,34 +9251,35 @@ class TerrainComposer extends EditorWindow
 								if (GUI.changed)
 								{
 									gui_changed_old = true;
-									if (script.terrains[current_layer.tree_output.tree_terrain].treePrototypes.Count > 0)
+									if (script.masterTerrain.treePrototypes.Count > 0)
 									{
-										if (current_tree.prototypeindex > script.terrains[current_layer.tree_output.tree_terrain].treePrototypes.Count-1)
+										if (current_tree.prototypeindex > script.masterTerrain.treePrototypes.Count-1)
 										{
-											current_tree.prototypeindex = script.terrains[current_layer.tree_output.tree_terrain].treePrototypes.Count-1;
+											current_tree.prototypeindex = script.masterTerrain.treePrototypes.Count-1;
 										}
 										if (current_tree.prototypeindex < 0)
 										{
 											current_tree.prototypeindex = 0;
 										}
-										current_tree.count_mesh(script.terrains[current_layer.tree_output.tree_terrain].treePrototypes[current_tree.prototypeindex].prefab);
+										current_tree.count_mesh(script.masterTerrain.treePrototypes[current_tree.prototypeindex].prefab);
 									}
 								}
 								
-		           				gui_changed_window = GUI.changed; GUI.changed = false;
-								current_layer.tree_output.tree_value.value[count_tree] = EditorGUILayout.Slider(current_layer.tree_output.tree_value.value[count_tree],0.1,100);
-								if (global_script.settings.tooltip_mode != 0)
-						       	{
-						        	tooltip_text = "Center this value to 50";
-						        }
-								if (GUILayout.Button(GUIContent("C",tooltip_text),GUILayout.Width(25))){current_layer.tree_output.tree_value.value[count_tree] = 50;GUI.changed = true;}
-								EditorGUILayout.LabelField(current_layer.tree_output.tree_value.text[count_tree],GUILayout.Width(90));
-								if (GUI.changed)
-								{
-									gui_changed_old = true;
-									current_layer.tree_output.tree_value.calc_value();
-								}
+//		           				gui_changed_window = GUI.changed; GUI.changed = false;
+//								current_layer.tree_output.tree_value.value[count_tree] = EditorGUILayout.Slider(current_layer.tree_output.tree_value.value[count_tree],0.1,100);
+//								if (global_script.settings.tooltip_mode != 0)
+//						       	{
+//						        	tooltip_text = "Center this value to 50";
+//						        }
+//								if (GUILayout.Button(GUIContent("C",tooltip_text),GUILayout.Width(25))){current_layer.tree_output.tree_value.value[count_tree] = 50;GUI.changed = true;}
+//								EditorGUILayout.LabelField(current_layer.tree_output.tree_value.text[count_tree],GUILayout.Width(90));
+//								if (GUI.changed)
+//								{
+//									gui_changed_old = true;
+//									current_layer.tree_output.tree_value.calc_value();
+//								}
 								GUI.changed = gui_changed_old;
+								DrawValueSlider(current_layer.tree_output.tree_value,count_tree,true);
 									
 							if (!global_script.settings.toggle_text_no)
 					        {
@@ -9161,7 +9300,7 @@ class TerrainComposer extends EditorWindow
 								if (count_tree > 0) {
 			           				if (GUILayout.Button("▲",GUILayout.Width(25))) {
 			           					current_layer.tree_output.swap_tree(count_tree,count_tree-1);
-			           					if (script.generate_auto){generate_auto();}
+			           					generate_auto();
 			           				}
 			           			}
 			           			else {
@@ -9170,7 +9309,7 @@ class TerrainComposer extends EditorWindow
 			           			if (count_tree < current_layer.tree_output.tree.Count-1) {
 			           				if (GUILayout.Button("▼",GUILayout.Width(25))) {
 				           				current_layer.tree_output.swap_tree(count_tree,count_tree+1);
-				           				if (script.generate_auto){generate_auto();}
+				           				generate_auto();
 				           			}
 				           		}
 				           		else {
@@ -9179,17 +9318,17 @@ class TerrainComposer extends EditorWindow
 			           			if (GUILayout.Button(current_tree.swap_text,GUILayout.Width(35)))
 			           			{
 			           				swap_tree(current_layer.tree_output,count_tree);
-			           				if (script.generate_auto){generate_auto();}
+			           				generate_auto();
 			           			} 	
 			           			if (GUILayout.Button("+",GUILayout.Width(25)))
 			           			{
-			           				add_tree(count_tree,current_layer.tree_output,current_layer.tree_output.tree_terrain);
-			           				if (script.generate_auto){generate_auto();}
+			           				add_tree(count_tree,current_layer.tree_output);
+			           				generate_auto();
 			           			}	 
 			           			if (GUILayout.Button("-",GUILayout.Width(25))){
 			           				if (key.control) {
 			           					erase_tree(count_tree,current_layer.tree_output);
-			           					if (script.generate_auto){generate_auto();}
+			           					generate_auto();
 			           					this.Repaint();
 			           					return;
 			           				}
@@ -9360,9 +9499,9 @@ class TerrainComposer extends EditorWindow
 					           			GUILayout.Space(space+75);
 					           			if (GUILayout.Button(GUIContent(">Set All",tooltip_text),GUILayout.Width(65)))
 						           		{
-						           			Undo("Set All Scale Tree"); 
+						           			UndoRegister("Set All Scale Tree"); 
 						           			current_layer.tree_output.set_scale(current_tree,count_tree,key.shift);	
-						           			if (script.generate_auto){generate_auto();}
+						           			generate_auto();
 						           		}
 						           		EditorGUILayout.EndHorizontal();
 						           	}
@@ -9435,8 +9574,8 @@ class TerrainComposer extends EditorWindow
 					           			GUILayout.Space(space+75);
 					           			if (GUILayout.Button(GUIContent(">Set All",tooltip_text),GUILayout.Width(65)))
 					           			{
-					           				Undo("Set All Distance Tree");
-					           				if (script.generate_auto){generate_auto();}
+					           				UndoRegister("Set All Distance Tree");
+					           				generate_auto();
 					           				current_layer.tree_output.set_distance(current_tree,count_tree,key.shift);	
 					           			}
 					           			EditorGUILayout.EndHorizontal();
@@ -9492,25 +9631,25 @@ class TerrainComposer extends EditorWindow
 	           	EditorGUILayout.EndHorizontal();
   	  			
   	 			// grass_foldout
-	        	if (current_layer.grass_output.foldout && script.terrains[current_layer.grass_output.grass_terrain])
+	        	if (current_layer.grass_output.foldout && script.masterTerrain)
 	        	{
 			    	EditorGUILayout.BeginHorizontal(); 
 			        GUILayout.Space(space+45);
 			        if (GUILayout.Button("+",GUILayout.Width(25)))
 			        {
-			        	add_grass(current_layer.grass_output,current_layer.grass_output.grass.Count-1,current_layer.grass_output.grass_terrain,key.shift);
+			        	add_grass(current_layer.grass_output,current_layer.grass_output.grass.Count-1,key.shift);
 			        }
 		        	if (GUILayout.Button("-",GUILayout.Width(25)))
 		        	{
 		        		if (key.control) {
 			        		if (!key.shift)
 			        		{
-			        			Undo("Erase Grass");
+			        			UndoRegister("Erase Grass");
 								current_layer.grass_output.erase_grass(current_layer.grass_output.grass.Count-1);
 							}
 							else
 							{
-								Undo("Erase Grasses");
+								UndoRegister("Erase Grasses");
 								current_layer.grass_output.clear_grass();
 							}
 			        		this.Repaint();
@@ -9520,9 +9659,10 @@ class TerrainComposer extends EditorWindow
 							this.ShowNotification(GUIContent("Control click the '-' button to erase\nControl Shift click the '-' button to erase all"));
 						}
 		        	} 
+		        	if (GUILayout.Button("R",GUILayout.Width(25))) {current_layer.grass_output.grass_value.reset_values();generate_auto();}
 			        EditorGUILayout.EndHorizontal();
 			        
-			        for (count_grass = 0;count_grass < current_layer.grass_output.grass.Count;++count_grass)
+			        for (var count_grass: int = 0;count_grass < current_layer.grass_output.grass.Count;++count_grass)
 		           	{
 		           		var current_grass: grass_class = current_layer.grass_output.grass[count_grass];
 		           		var draw_grass_texture: boolean = false;
@@ -9535,35 +9675,35 @@ class TerrainComposer extends EditorWindow
 		           				 
 		           		EditorGUILayout.BeginHorizontal();
 		           		GUILayout.Space(space+45); 
-		           		if (current_layer.grass_output.grass[count_grass].prototypeindex < script.terrains[current_layer.grass_output.grass_terrain].detailPrototypes.Count)
+		           		if (current_layer.grass_output.grass[count_grass].prototypeindex < script.masterTerrain.detailPrototypes.Count)
 						{
 							// grass text
-							// EditorGUILayout.ObjectField(script.terrains[current_layer.grass_output.grass_terrain].detailPrototypes[current_grass.prototypeindex].prototypeTexture,Texture,false,GUILayout.Height(50),GUILayout.Width(50));
-							if (script.terrains[current_layer.grass_output.grass_terrain].detailPrototypes[current_grass.prototypeindex].prototype && script.terrains[current_layer.grass_output.grass_terrain].detailPrototypes[current_grass.prototypeindex].usePrototypeMesh) {
+							// EditorGUILayout.ObjectField(script.masterTerrain.detailPrototypes[current_grass.prototypeindex].prototypeTexture,Texture,false,GUILayout.Height(50),GUILayout.Width(50));
+							if (script.masterTerrain.detailPrototypes[current_grass.prototypeindex].prototype && script.masterTerrain.detailPrototypes[current_grass.prototypeindex].usePrototypeMesh) {
 								EditorGUILayout.LabelField(count_grass+").",GUILayout.Width(27));
 								if (key.type == EventType.Repaint){grassRect = GUILayoutUtility.GetLastRect();}
 								draw_grass_texture = true; 
 								#if !UNITY_3_4 && !UNITY_3_5
-							    script.terrains[current_layer.grass_output.grass_terrain].detailPrototypes[current_grass.prototypeindex].previewTexture = AssetPreview.GetAssetPreview(script.terrains[current_layer.grass_output.grass_terrain].detailPrototypes[current_grass.prototypeindex].prototype);
+							    script.masterTerrain.detailPrototypes[current_grass.prototypeindex].previewTexture = AssetPreview.GetAssetPreview(script.masterTerrain.detailPrototypes[current_grass.prototypeindex].prototype);
 								#else
-							    script.terrains[current_layer.grass_output.grass_terrain].detailPrototypes[current_grass.prototypeindex].previewTexture = EditorUtility.GetAssetPreview(script.terrains[current_layer.grass_output.grass_terrain].detailPrototypes[current_grass.prototypeindex].prototype);
+							    script.masterTerrain.detailPrototypes[current_grass.prototypeindex].previewTexture = EditorUtility.GetAssetPreview(script.masterTerrain.detailPrototypes[current_grass.prototypeindex].prototype);
 								#endif
 								
-								if (script.terrains[current_layer.grass_output.grass_terrain].detailPrototypes[current_grass.prototypeindex].previewTexture) {
-									EditorGUI.DrawPreviewTexture(Rect(grassRect.x+25,grassRect.y,50,50),script.terrains[current_layer.grass_output.grass_terrain].detailPrototypes[current_grass.prototypeindex].previewTexture);
+								if (script.masterTerrain.detailPrototypes[current_grass.prototypeindex].previewTexture) {
+									EditorGUI.DrawPreviewTexture(Rect(grassRect.x+25,grassRect.y,50,50),script.masterTerrain.detailPrototypes[current_grass.prototypeindex].previewTexture);
 									GUILayout.Space(50);
 								}
 								else {
-									GUI.Button(Rect(grassRect.x+25,grassRect.y,50,50),Substring(script.terrains[current_layer.grass_output.grass_terrain].detailPrototypes[current_grass.prototypeindex].prototype.name,".",5),EditorStyles.miniButtonMid);
+									GUI.Button(Rect(grassRect.x+25,grassRect.y,50,50),Substring(script.masterTerrain.detailPrototypes[current_grass.prototypeindex].prototype.name,".",5),EditorStyles.miniButtonMid);
 									GUILayout.Space(50);
 								}
 							}
-							if (script.terrains[current_layer.grass_output.grass_terrain].detailPrototypes[current_grass.prototypeindex].prototypeTexture && !script.terrains[current_layer.grass_output.grass_terrain].detailPrototypes[current_grass.prototypeindex].usePrototypeMesh)
+							if (script.masterTerrain.detailPrototypes[current_grass.prototypeindex].prototypeTexture && !script.masterTerrain.detailPrototypes[current_grass.prototypeindex].usePrototypeMesh)
 							{
 								EditorGUILayout.LabelField(count_grass+").",GUILayout.Width(27));
 								if (key.type == EventType.Repaint){grassRect = GUILayoutUtility.GetLastRect();}
 								draw_grass_texture = true;
-								EditorGUI.DrawPreviewTexture(Rect(grassRect.x+25,grassRect.y,50,50),script.terrains[current_layer.grass_output.grass_terrain].detailPrototypes[current_grass.prototypeindex].prototypeTexture);
+								EditorGUI.DrawPreviewTexture(Rect(grassRect.x+25,grassRect.y,50,50),script.masterTerrain.detailPrototypes[current_grass.prototypeindex].prototypeTexture);
 								GUILayout.Space(50);
 							}
 						}
@@ -9588,23 +9728,23 @@ class TerrainComposer extends EditorWindow
 								if (count_grass > 0){current_grass.prototypeindex = current_layer.grass_output.grass[count_grass-1].prototypeindex+1;}
 								else {current_grass.prototypeindex += 1;}
 							}
-							if (script.generate_auto){generate_auto();}
-							GUI.changed = true;
+							generate_auto();
+							// GUI.changed = true;
 						}
 						if (GUILayout.Button("-",GUILayout.Width(25)) && current_grass.prototypeindex > 0)
 						{
 							current_grass.prototypeindex -= 1;
-							if (script.generate_auto){generate_auto();}
-							GUI.changed = true;
+							generate_auto();
+							// GUI.changed = true;
 						}
 						
 						if (GUI.changed)
 						{
-							if (script.terrains[current_layer.grass_output.grass_terrain].detailPrototypes.Count > 0)
+							if (script.masterTerrain.detailPrototypes.Count > 0)
 							{
-								if (current_grass.prototypeindex > script.terrains[current_layer.grass_output.grass_terrain].detailPrototypes.Count-1)
+								if (current_grass.prototypeindex > script.masterTerrain.detailPrototypes.Count-1)
 								{
-									current_grass.prototypeindex = script.terrains[current_layer.grass_output.grass_terrain].detailPrototypes.Count-1;
+									current_grass.prototypeindex = script.masterTerrain.detailPrototypes.Count-1;
 								}
 								if (current_grass.prototypeindex < 0)
 								{
@@ -9612,20 +9752,8 @@ class TerrainComposer extends EditorWindow
 								}
 							}
 						}
-												 	 						 	 
-						gui_changed_window = GUI.changed; GUI.changed = false;
-						current_layer.grass_output.grass_value.value[count_grass] = EditorGUILayout.Slider(current_layer.grass_output.grass_value.value[count_grass],1,100);
-						if (global_script.settings.tooltip_mode != 0)
-						{
-							tooltip_text = "Center this value to 50";
-						}
-						if (GUILayout.Button(GUIContent("C",tooltip_text),GUILayout.Width(25))){current_layer.grass_output.grass_value.value[count_grass] = 50;GUI.changed = true;}
-						EditorGUILayout.LabelField(current_layer.grass_output.grass_value.text[count_grass],GUILayout.Width(90));
-						if (GUI.changed)
-						{
-							gui_changed_old = true;
-							current_layer.grass_output.grass_value.calc_value();current_layer.grass_output.set_grass_curve();
-						}
+						GUI.changed = gui_changed_old;	
+						DrawValueSlider(current_layer.grass_output.grass_value,count_grass,true);						 	 											 	 						 	 
 								 
 						if (!global_script.settings.toggle_text_no)
 						{
@@ -9648,7 +9776,7 @@ class TerrainComposer extends EditorWindow
 			           		{
 			           			if (current_layer.grass_output.swap_grass(count_grass,count_grass-1))
 			           			{
-			           				if (script.generate_auto){generate_auto();}
+			           				generate_auto();
 			           			}
 			           		} 		 
 			           	} 
@@ -9660,7 +9788,7 @@ class TerrainComposer extends EditorWindow
 			           		{
 			           			if (current_layer.grass_output.swap_grass(count_grass,count_grass+1))
 			           			{
-			           				if (script.generate_auto){generate_auto();}
+			           				generate_auto();
 			           			}
 			           		}
 			           	}
@@ -9669,14 +9797,14 @@ class TerrainComposer extends EditorWindow
 			           	}
 		           		if (GUILayout.Button("+",GUILayout.Width(25)))
 		           		{
-		           			add_grass(current_layer.grass_output,count_grass,current_layer.grass_output.grass_terrain,key.shift);
-		           			if (script.generate_auto){generate_auto();}
+		           			add_grass(current_layer.grass_output,count_grass,key.shift);
+		           			generate_auto();
 		           		}	 
 		           		if (GUILayout.Button("-",GUILayout.Width(25)))
 		           		{
 		           			if (key.control) {
 			           			current_layer.grass_output.erase_grass(count_grass);
-			           			if (script.generate_auto){generate_auto();}
+			           			generate_auto();
 			           			this.Repaint();
 			        			return;
 			        		}
@@ -9749,7 +9877,7 @@ class TerrainComposer extends EditorWindow
 			        		}
 					        else
 					        {
-					        	Undo("Erase Objects");
+					        	UndoRegister("Erase Objects");
 					        	script.clear_object(current_layer.object_output);
 					        }
 			        		this.Repaint();
@@ -9761,9 +9889,11 @@ class TerrainComposer extends EditorWindow
 		        	} 
 		        	if (GUILayout.Button("F",GUILayout.Width(20)))
 					{
-						current_layer.object_output.objects_foldout = !current_layer.object_output.objects_foldout;
+						current_layer.object_output.object_foldout = !current_layer.object_output.object_foldout;
 						script.change_objects_foldout(current_layer.object_output,key.shift);
 					}
+					
+					
 					if (global_script.settings.tooltip_mode != 0) {
 						tooltip_text = "Create a GameObject in the Hierarchy to use as a parent for placed object from this layer.";
 					}
@@ -9771,6 +9901,9 @@ class TerrainComposer extends EditorWindow
 					{
 						create_object_parent_layer(current_layer);
 					}
+					
+					if (GUILayout.Button("R",GUILayout.Width(25))) current_layer.object_output.object_value.reset_values();
+					
 //					if (GUILayout.Button("»I«",GUILayout.Width(35)))
 //					{
 //						if (key.alt){current_layer.object_output.search_active = !current_layer.object_output.search_active;}
@@ -9786,9 +9919,8 @@ class TerrainComposer extends EditorWindow
 //						}
 //					}
 					EditorGUILayout.LabelField("");
-					if (GUILayout.Button("A",GUILayout.Width(20)))
-					{
-						current_layer.object_output.objects_active = !current_layer.object_output.objects_active;
+					if (GUILayout.Button("A",GUILayout.Width(20))) {
+						if (!key.shift) current_layer.object_output.object_active = !current_layer.object_output.object_active;
 						script.change_objects_active(current_layer.object_output,key.shift);
 					}
 					GUILayout.Space(163);
@@ -9816,7 +9948,7 @@ class TerrainComposer extends EditorWindow
 //			        	// EditorGUILayout.EndHorizontal();
 //			        }
 			        
-			        for (count_object = 0;count_object < current_layer.object_output.object.Count;++count_object)
+			        for (var count_object: int = 0;count_object < current_layer.object_output.object.Count;++count_object)
 		           	{
 			        	var current_object: object_class = current_layer.object_output.object[count_object];
 			        	
@@ -9869,32 +10001,25 @@ class TerrainComposer extends EditorWindow
 						  	}	
 						  	
 						  	GUI.color = UnityEngine.Color.green;
-							if (key.type == EventType.Repaint){countRect = GUILayoutUtility.GetLastRect();}
+							countRect = GUILayoutUtility.GetLastRect();
 							EditorGUI.LabelField(Rect(countRect.x+3,countRect.y+45,64,20),current_object.placed.ToString(),EditorStyles.miniLabel);
 							GUI.color = UnityEngine.Color.white; 
 							
-							EditorGUI.LabelField(Rect(countRect.x+64,countRect .y+20,64,20),count_object.ToString()+").",EditorStyles.miniLabel);
+							EditorGUI.LabelField(Rect(countRect.x+64,countRect.y,64,20),count_object.ToString()+").",EditorStyles.miniLabel);
 						// }
 						
 			           	if (!global_script.settings.color_scheme){color_object = global_script.settings.color.color_object;} 
-			           	
-			    		gui_changed_old = GUI.changed;
-			    		current_object.foldout = EditorGUILayout.Foldout(current_object.foldout,"Object"+count_object);
+			           	gui_changed_old = GUI.changed;
+			           	countRect.x += 66;
+			           	countRect.y += 47;
+			           	countRect.width = 25;
+			           	countRect.height = 20;
+			           	current_object.foldout = EditorGUI.Foldout(countRect,current_object.foldout,"");
 						GUI.changed = gui_changed_old;
-						gui_changed_window = GUI.changed; GUI.changed = false;
-						GUILayout.Space(50);
-						current_layer.object_output.object_value.value[count_object] = EditorGUILayout.Slider(current_layer.object_output.object_value.value[count_object],1,100);
-						if (global_script.settings.tooltip_mode != 0)
-						{
-							tooltip_text = "Center this value to 50";
-						}
-						if (GUILayout.Button(GUIContent("C",tooltip_text),GUILayout.Width(25))){current_layer.object_output.object_value.value[count_object] = 50;GUI.changed = true;}
-						if (GUI.changed)
-						{
-							gui_changed_old = true;
-							current_layer.object_output.object_value.calc_value();gui_changed_window = GUI.changed; GUI.changed = false;
-						}
-						EditorGUILayout.LabelField(current_layer.object_output.object_value.text[count_object],GUILayout.Width(90));
+			           	GUILayout.Space(15);
+			    		DrawValueSlider(current_layer.object_output.object_value,count_object,true);
+			    		
+			    		GUI.changed = false;
 						current_object.object1 = EditorGUILayout.ObjectField(current_object.object1,GameObject,true) as GameObject;
 						if (GUI.changed)
 						{
@@ -10093,10 +10218,10 @@ class TerrainComposer extends EditorWindow
 					           	current_object.prefab = EditorGUILayout.Toggle(current_object.prefab,GUILayout.Width(25));
 					           	if (GUI.changed) {
 					           		if (current_object.object1) {
-						           		if (PrefabUtility.GetPrefabType(current_object.object1) == PrefabType.None) {
+						           		if (PrefabUtility.GetPrefabType(current_object.object1) == PrefabType.None || !AssetDatabase.Contains(current_object.object1)) {
 											if (current_object.prefab) {
 												current_object.prefab = false;
-												this.ShowNotification(GUIContent("Selected object is not a prefab"));
+												this.ShowNotification(GUIContent("Selected object is not a prefab. Please select a prefab from your Project window"));
 											}
 										}
 									}
@@ -10198,9 +10323,9 @@ class TerrainComposer extends EditorWindow
 				           			{
 					           			if (GUILayout.Button(GUIContent(">Set All",tooltip_text),GUILayout.Width(65)))
 					           			{
-					           				Undo("Set All Settings Objects");
+					           				UndoRegister("Set All Settings Objects");
 					           				current_layer.object_output.set_settings(current_object,count_object,key.shift);	
-					           				if (script.generate_auto){generate_auto();}
+					           				generate_auto();
 					           			}
 					           		}
 				           			
@@ -10209,7 +10334,7 @@ class TerrainComposer extends EditorWindow
 						       	{
 							       	if (GUILayout.Button("-Erase Layer Level-",GUILayout.Width(140)) && key.control)
 									{
-										Undo("Erase Layer Level");
+										UndoRegister("Erase Layer Level");
 					   					script.erase_prelayer(current_object.prelayer_index);
 										current_object.prelayer_created = false;
 										script.count_layers();
@@ -10249,7 +10374,7 @@ class TerrainComposer extends EditorWindow
 			           			if (GUILayout.Button("-",GUILayout.Width(25)) && current_object.object_material.material.Count > 1)
 			           			{
 			           				if (key.control) {
-			           					Undo("Erase Material");
+			           					UndoRegister("Erase Material");
 				           				current_object.object_material.erase_material(current_object.object_material.material.Count-1);
 				           			    this.Repaint();
 			        					return;
@@ -10276,7 +10401,7 @@ class TerrainComposer extends EditorWindow
 				    	     		if (GUILayout.Button("-",GUILayout.Width(25)) && current_object.object_material.material.Count > 1)
 				           			{
 				           				if (key.control) {
-				           					Undo("Erase Material");
+				           					UndoRegister("Erase Material");
 					           				current_object.object_material.erase_material(count_material);
 					           			    this.Repaint();
 				        					return;
@@ -10586,6 +10711,12 @@ class TerrainComposer extends EditorWindow
 					           	EditorGUILayout.LabelField("Include Terrain Rotation",GUILayout.Width(150));
 					           	current_object.terrain_rotate = EditorGUILayout.Toggle(current_object.terrain_rotate,GUILayout.Width(25));
 					           	EditorGUILayout.EndHorizontal();	
+					           	
+//					           	EditorGUILayout.BeginHorizontal();
+//					           	GUILayout.Space(space+75);
+//					           	EditorGUILayout.LabelField("Place in Terrain Bounds",GUILayout.Width(150));
+//					           	current_object.placeInside = EditorGUILayout.Toggle(current_object.placeInside,GUILayout.Width(25));
+//					           	EditorGUILayout.EndHorizontal();	
 					           				
 					           	if (global_script.settings.tooltip_mode != 0)
 						        {
@@ -10597,8 +10728,8 @@ class TerrainComposer extends EditorWindow
 							        GUILayout.Space(space+75);
 							        if (GUILayout.Button(GUIContent(">Set All",tooltip_text),GUILayout.Width(65)))
 							        {
-							        	Undo("Set All Transforms Objects");
-							        	if (script.generate_auto){generate_auto();}
+							        	UndoRegister("Set All Transforms Objects");
+							        	generate_auto();
 							           	current_layer.object_output.set_transform(current_object,count_object,key.shift);	
 							        }
 							        EditorGUILayout.EndHorizontal();
@@ -10614,28 +10745,28 @@ class TerrainComposer extends EditorWindow
 					           				
 				           	if (current_object.rotation_foldout)
 				           	{
-					        	EditorGUILayout.BeginHorizontal();
-					           	GUILayout.Space(space+75);
-					           	gui_changed_old = GUI.changed;
-					           	current_object.rotation_map_foldout = EditorGUILayout.Foldout(current_object.rotation_map_foldout,"Rotation Map");
-					           	GUI.changed = gui_changed_old;
-					           	EditorGUILayout.EndHorizontal();	
-					           				
-				           				
-					           	if (current_object.rotation_map_foldout)
-					           	{
-					           		EditorGUILayout.BeginHorizontal();
-					           		GUILayout.Space(space+90);
-					           		EditorGUILayout.LabelField("Active",GUILayout.Width(115));
-					           		current_object.rotation_map.active = EditorGUILayout.Toggle(current_object.rotation_map.active,GUILayout.Width(25));
-					           		EditorGUILayout.EndHorizontal();	
-					           				
-					           		draw_image(current_object.rotation_map.preimage,space-120,color_object,false,5);
-					           	}
-					           			
+//					        	EditorGUILayout.BeginHorizontal();
+//					           	GUILayout.Space(space+75);
+//					           	gui_changed_old = GUI.changed;
+//					           	current_object.rotation_map_foldout = EditorGUILayout.Foldout(current_object.rotation_map_foldout,"Rotation Map");
+//					           	GUI.changed = gui_changed_old;
+//					           	EditorGUILayout.EndHorizontal();	
+//					           				
+//				           				
+//					           	if (current_object.rotation_map_foldout)
+//					           	{
+//					           		EditorGUILayout.BeginHorizontal();
+//					           		GUILayout.Space(space+90);
+//					           		EditorGUILayout.LabelField("Active",GUILayout.Width(115));
+//					           		current_object.rotation_map.active = EditorGUILayout.Toggle(current_object.rotation_map.active,GUILayout.Width(25));
+//					           		EditorGUILayout.EndHorizontal();	
+//					           				
+//					           		draw_image(current_object.rotation_map.preimage,space-120,color_object,false,5);
+//					           	}
+//					           			
 					           	EditorGUILayout.BeginHorizontal();
 					           	GUILayout.Space(space+75);
-					           	EditorGUILayout.LabelField("Rotation Steps",GUILayout.Width(140));
+					           	EditorGUILayout.LabelField("Rotation Snapping",GUILayout.Width(140));
 					           	current_object.rotation_steps = EditorGUILayout.Toggle(current_object.rotation_steps,GUILayout.Width(25));
 					           	EditorGUILayout.EndHorizontal();	
 					           				
@@ -10643,19 +10774,19 @@ class TerrainComposer extends EditorWindow
 					           	{
 						        	EditorGUILayout.BeginHorizontal();
 					           		GUILayout.Space(space+75);
-					           		EditorGUILayout.LabelField("Rotation Step X",GUILayout.Width(140));
+					           		EditorGUILayout.LabelField("Rotation Snap X",GUILayout.Width(140));
 					           		current_object.rotation_step.x = EditorGUILayout.FloatField(current_object.rotation_step.x);
 					           		EditorGUILayout.EndHorizontal();
 					           				 	
 					           		EditorGUILayout.BeginHorizontal();
 					           		GUILayout.Space(space+75);
-					           		EditorGUILayout.LabelField("Rotation Step Y",GUILayout.Width(140));
+					           		EditorGUILayout.LabelField("Rotation Snap Y",GUILayout.Width(140));
 					           		current_object.rotation_step.y = EditorGUILayout.FloatField(current_object.rotation_step.y);
 					           		EditorGUILayout.EndHorizontal();
 					           				 	
 					           		EditorGUILayout.BeginHorizontal();
 					           		GUILayout.Space(space+75);
-					           		EditorGUILayout.LabelField("Rotation Step Z",GUILayout.Width(140));
+					           		EditorGUILayout.LabelField("Rotation Snap Z",GUILayout.Width(140));
 					           		current_object.rotation_step.z = EditorGUILayout.FloatField(current_object.rotation_step.z);
 					           		EditorGUILayout.EndHorizontal();
 					           	} 	
@@ -10676,8 +10807,8 @@ class TerrainComposer extends EditorWindow
 							        GUILayout.Space(space+75);
 							        if (GUILayout.Button(GUIContent(">Set All",tooltip_text),GUILayout.Width(65)))
 							        {
-							        	Undo("Set All Rotation Objects");
-							        	if (script.generate_auto){generate_auto();}
+							        	UndoRegister("Set All Rotation Objects");
+							        	generate_auto();
 							           	current_layer.object_output.set_rotation(current_object,count_object,key.shift);	
 							        }
 							        EditorGUILayout.EndHorizontal();
@@ -10750,8 +10881,8 @@ class TerrainComposer extends EditorWindow
 							        GUILayout.Space(space+75);
 							        if (GUILayout.Button(GUIContent(">Set All",tooltip_text),GUILayout.Width(65)))
 							        {
-							        	Undo("Set All Distance Objects");
-							        	if (script.generate_auto){generate_auto();}
+							        	UndoRegister("Set All Distance Objects");
+							        	generate_auto();
 							           	current_layer.object_output.set_distance(current_object,count_object,key.shift);	
 							        }
 							        EditorGUILayout.EndHorizontal();
@@ -10819,13 +10950,13 @@ class TerrainComposer extends EditorWindow
 					{
 						UnityEngine.Random.seed = EditorApplication.timeSinceStartup;
 						current_layer.offset = Vector2(UnityEngine.Random.Range(-current_layer.offset_range.x+current_layer.offset_middle.x,current_layer.offset_range.y+current_layer.offset_middle.x),UnityEngine.Random.Range(-current_layer.offset_range.y+current_layer.offset_middle.y,current_layer.offset_range.y+current_layer.offset_middle.y));
-						if (script.generate_auto){generate_auto();}
+						generate_auto();
 					}
 					if (GUILayout.Button("Reset",EditorStyles.miniButtonMid,GUILayout.Width(70)))
 					{
 						current_layer.offset = Vector2(0,0);
 						current_layer.offset_middle = Vector2(0,0);
-						if (script.generate_auto){generate_auto();}
+						generate_auto();
 					}
 					EditorGUILayout.EndHorizontal();							
 								
@@ -10841,116 +10972,6 @@ class TerrainComposer extends EditorWindow
 					current_layer.offset.y = EditorGUILayout.Slider(current_layer.offset.y,-current_layer.offset_range.y+current_layer.offset_middle.y,current_layer.offset_range.y+current_layer.offset_middle.y);
 					EditorGUILayout.EndHorizontal();
 				}
-			
-							
-			// line placement
-			if (current_layer.object_output.object_mode == object_mode_enum.LinePlacement)
-			{
-				EditorGUILayout.BeginHorizontal();
-				GUILayout.Space(space+30);
-				gui_changed_old = GUI.changed;
-				current_layer.object_output.line_placement.foldout = EditorGUILayout.Foldout(current_layer.object_output.line_placement.foldout,"Line Placement");
-				GUI.changed = gui_changed_old;
-				EditorGUILayout.EndHorizontal();
-							
-				if (current_layer.object_output.line_placement.foldout)
-				{
-					draw_image(current_layer.object_output.line_placement.preimage,space-165,color_object,false,4);	
-							
-					EditorGUILayout.BeginHorizontal();
-					GUILayout.Space(space+45);
-					gui_changed_old = GUI.changed;
-					current_layer.object_output.line_placement.line_list_foldout = EditorGUILayout.Foldout(current_layer.object_output.line_placement.line_list_foldout,"Line Point List");
-					GUI.changed = gui_changed_old;
-					EditorGUILayout.EndHorizontal();
-								
-					if (current_layer.object_output.line_placement.line_list_foldout)
-					{
-						EditorGUILayout.BeginHorizontal();
-						GUILayout.Space(space+60);
-						if (GUILayout.Button("+",GUILayout.Width(25)))
-						{
-							script.add_line_point(current_layer.object_output.line_placement.line_list,current_layer.object_output.line_placement.line_list.Count);
-						}
-						if (GUILayout.Button("-",GUILayout.Width(25)))
-						{
-							if (key.control) {
-								script.erase_line_point(current_layer.object_output.line_placement.line_list,current_layer.object_output.line_placement.line_list.Count-1);
-							}
-							else {
-								this.ShowNotification(GUIContent("Control click the '-' button to erase"));
-							}
-						}
-						EditorGUILayout.EndHorizontal();
-									
-						for (var count_line_list: int = 0;count_line_list < current_layer.object_output.line_placement.line_list.Count;++count_line_list)
-						{
-							EditorGUILayout.BeginHorizontal();
-							GUILayout.Space(space+60);
-							gui_changed_old = GUI.changed;
-							current_layer.object_output.line_placement.line_list[count_line_list].foldout = EditorGUILayout.Foldout(current_layer.object_output.line_placement.line_list[count_line_list].foldout,"Line Groups"+count_line_list);
-							GUI.changed = gui_changed_old;
-							EditorGUILayout.EndHorizontal();
-										
-							if (current_layer.object_output.line_placement.line_list[count_line_list].foldout)
-							{
-								EditorGUILayout.BeginHorizontal();
-								GUILayout.Space(space+75);
-								EditorGUILayout.LabelField("Color",GUILayout.Width(100));
-								current_layer.object_output.line_placement.line_list[count_line_list].color = EditorGUILayout.ColorField(current_layer.object_output.line_placement.line_list[count_line_list].color);
-								EditorGUILayout.EndHorizontal();
-										
-								EditorGUILayout.BeginHorizontal();
-								GUILayout.Space(space+75);
-								EditorGUILayout.LabelField("Point length",GUILayout.Width(100));
-								current_layer.object_output.line_placement.line_list[count_line_list].point_length = EditorGUILayout.IntField(current_layer.object_output.line_placement.line_list[count_line_list].point_length);
-								EditorGUILayout.EndHorizontal();
-											
-								EditorGUILayout.BeginHorizontal();
-								GUILayout.Space(space+75);
-								gui_changed_old = GUI.changed;
-								current_layer.object_output.line_placement.line_list[count_line_list].point_foldout = EditorGUILayout.Foldout(current_layer.object_output.line_placement.line_list[count_line_list].point_foldout,"Points");
-								GUI.changed = gui_changed_old;
-								EditorGUILayout.EndHorizontal();
-											
-								if (current_layer.object_output.line_placement.line_list[count_line_list].point_foldout)
-								{
-									EditorGUILayout.BeginHorizontal();
-									GUILayout.Space(space+90);
-									if (GUILayout.Button("Clear",GUILayout.Width(60)))
-									{
-										current_layer.object_output.line_placement.line_list[count_line_list].points.Clear();	
-									}
-									if (GUILayout.Button("Wall",GUILayout.Width(60)))
-									{
-										script.create_object_line(current_layer.object_output);
-									}
-												
-									EditorGUILayout.EndHorizontal();
-												
-									if (current_layer.object_output.line_placement.line_list[count_line_list].points.Count == 0)
-									{
-										EditorGUILayout.BeginHorizontal();
-										GUILayout.Space(space+90);
-										EditorGUILayout.LabelField("Empty",GUILayout.Width(100));
-										EditorGUILayout.EndHorizontal();
-									}
-									else
-									{
-										for (var count_point: int = 0;count_point < current_layer.object_output.line_placement.line_list[count_line_list].points.Count;++count_point)
-										{
-											EditorGUILayout.BeginHorizontal();
-											GUILayout.Space(space+90);
-											EditorGUILayout.LabelField("Point"+count_point+"  "+current_layer.object_output.line_placement.line_list[count_line_list].points[count_point],GUILayout.Width(200));	
-											EditorGUILayout.EndHorizontal();
-										}
-									}
-								}
-							}
-						}
-					}
-				}
-			}
 			
 			switch (current_layer.output)
 			{	
@@ -11016,7 +11037,7 @@ class TerrainComposer extends EditorWindow
 			if (GUILayout.Button("+",GUILayout.Width(25)))
 			{
 				add_filter(prefilter.filter_index.Count-1,prelayer,prefilter);
-				if (script.generate_auto){generate_auto();}
+				generate_auto();
 			}
 			if (GUILayout.Button("-",GUILayout.Width(25)) && prefilter.filter_index.Count > 0)
 			{
@@ -11027,10 +11048,10 @@ class TerrainComposer extends EditorWindow
 					}
 					else
 					{
-						Undo("Erase Filters");
+						UndoRegister("Erase Filters");
 						script.erase_filters(prefilter);
 					}
-					if (script.generate_auto){generate_auto();}
+					generate_auto();
 				}
 				else {
 					this.ShowNotification(GUIContent("Control click the '-' button to erase\nControl Shift click the '-' button to erase all"));
@@ -11048,7 +11069,7 @@ class TerrainComposer extends EditorWindow
 				{
 					prefilter.filters_active = !prefilter.filters_active;
 					script.change_filters_active(prefilter,key.shift);
-					if (script.generate_auto){generate_auto();}
+					generate_auto();
 				}
 				GUILayout.Space(163);
 			}
@@ -11059,8 +11080,8 @@ class TerrainComposer extends EditorWindow
 				{
 					if (GUILayout.Button(">Set All",GUILayout.Width(65)))
 					{
-						Undo("Set All Tree Filters");
-						if (script.generate_auto){generate_auto();}
+						UndoRegister("Set All Tree Filters");
+						generate_auto();
 						script.set_all_tree_filters(current_layer.tree_output,current_number,key.shift);
 					}
 				}
@@ -11126,7 +11147,7 @@ class TerrainComposer extends EditorWindow
 					if (GUILayout.Button("▲",GUILayout.Width(25)) && count_filter > 0)
 					{
 						script.swap_filter(prefilter,count_filter,prefilter,count_filter-1);
-						if (script.generate_auto){generate_auto();}
+						generate_auto();
 					} 
 				}
 				else {
@@ -11136,7 +11157,7 @@ class TerrainComposer extends EditorWindow
 					if (GUILayout.Button("▼",GUILayout.Width(25)))
 					{
 						script.swap_filter(prefilter,count_filter,prefilter,count_filter+1);
-						if (script.generate_auto){generate_auto();}
+						generate_auto();
 					} 		 
 				}
 				else {
@@ -11149,13 +11170,13 @@ class TerrainComposer extends EditorWindow
 				if (GUILayout.Button("+",GUILayout.Width(25)))
 				{
 					add_filter(count_filter,prelayer,prefilter);
-					if (script.generate_auto){generate_auto();}
+					generate_auto();
 				} 		 
 				if (GUILayout.Button("-",GUILayout.Width(25)) && prefilter.filter_index.Count > 0)
 				{
 					if (key.control) {
 						erase_filter(count_filter,prefilter);
-						if (script.generate_auto){generate_auto();}
+						generate_auto();
 					}
 					else {
 						this.ShowNotification(GUIContent("Control click the '-' button to erase"));
@@ -11300,14 +11321,14 @@ class TerrainComposer extends EditorWindow
 						GUILayout.Space(space+60);
 						EditorGUILayout.LabelField("Splat texture",GUILayout.Width(145));
 						if (key.type == EventType.Repaint){splatRect = GUILayoutUtility.GetLastRect();}
-						if (current_filter.splat_index < script.terrains[current_layer.splat_output.splat_terrain].splatPrototypes.Count) {
+						if (current_filter.splat_index < script.masterTerrain.splatPrototypes.Count) {
 							GUI.color = Color.white;
 							EditorGUI.DrawPreviewTexture(Rect(splatRect.x+149,splatRect.y,50,50),script.terrains[0].splatPrototypes[current_filter.splat_index].texture);
 							GUI.color = color_filter;
 							GUILayout.Space(54);
 						}
 						else {
-							current_filter.splat_index = script.terrains[current_layer.splat_output.splat_terrain].splatPrototypes.Count-1;
+							current_filter.splat_index = script.masterTerrain.splatPrototypes.Count-1;
 							if (current_filter.splat_index < 0) {current_filter.splat_index = 0;}
 						}
 						gui_changed_old = GUI.changed;
@@ -11316,11 +11337,12 @@ class TerrainComposer extends EditorWindow
 						if (GUI.changed) {
 							if (current_filter.splat_index < 0) {current_filter.splat_index = 0;}
 							current_filter.splatmap = (current_filter.splat_index/4);
+							gui_changed_old = true;
 							
 						}
 						GUI.changed = gui_changed_old;
 						EditorGUILayout.EndHorizontal();
-						if (current_filter.splat_index < script.terrains[current_layer.splat_output.splat_terrain].splatPrototypes.Count) {
+						if (current_filter.splat_index < script.masterTerrain.splatPrototypes.Count) {
 							GUILayout.Space(35);
 						}
 					}
@@ -11443,11 +11465,11 @@ class TerrainComposer extends EditorWindow
 					{
 						if (call_from == 1)
 						{
-							create_curve_help_window(AssetDatabase.LoadAssetAtPath("Assets/TerrainComposer/Buttons/curve_help.png",Texture),"Curve Help",current_filter.type.ToString());
+							create_curve_help_window(AssetDatabase.LoadAssetAtPath(install_path+"/Buttons/curve_help.png",Texture),"Curve Help",current_filter.type.ToString());
 						}
 						else if (call_from == 2)
 						{
-							create_curve_help_window(AssetDatabase.LoadAssetAtPath("Assets/TerrainComposer/Buttons/curve_help.png",Texture),"Curve Help",current_filter.type.ToString());
+							create_curve_help_window(AssetDatabase.LoadAssetAtPath(install_path+"/Buttons/curve_help.png",Texture),"Curve Help",current_filter.type.ToString());
 						}
 					}
 				}
@@ -11460,9 +11482,9 @@ class TerrainComposer extends EditorWindow
 				{
 					if (key.control && !key.shift)
 					{
-						Undo("Default Curve");
+						UndoRegister("Default Curve");
 						precurve_list[count_curve].set_default();
-						if (script.generate_auto){generate_auto();}
+						generate_auto();
 					}
 					else if (key.alt)
 					{
@@ -11487,7 +11509,7 @@ class TerrainComposer extends EditorWindow
 					if (GUILayout.Button("▲",EditorStyles.miniButtonMid,GUILayout.Width(25)))
 					{
 						script.swap_animation_curve(precurve_list,count_curve,count_curve-1);
-						if (script.generate_auto){generate_auto();}
+						generate_auto();
 					}
 				}
 				else {
@@ -11497,7 +11519,7 @@ class TerrainComposer extends EditorWindow
 					if (GUILayout.Button("▼",EditorStyles.miniButtonMid,GUILayout.Width(25)))
 					{
 						script.swap_animation_curve(precurve_list,count_curve,count_curve+1);
-						if (script.generate_auto){generate_auto();}
+						generate_auto();
 					}
 				}
 				else {
@@ -11507,16 +11529,16 @@ class TerrainComposer extends EditorWindow
 				{
 					if (!key.shift){script.add_animation_curve(precurve_list,count_curve+1,false);}
 						else {script.add_animation_curve(precurve_list,count_curve+1,true);}
-					if (script.generate_auto){generate_auto();}
+					generate_auto();
 				} 		 
 				if (GUILayout.Button("-",EditorStyles.miniButtonMid,GUILayout.Width(25)))
 				{
 					if (key.control) {
 						if (precurve_list.Count > 1)
 						{
-							Undo("Erase Curve");
+							UndoRegister("Erase Curve");
 							script.erase_animation_curve(precurve_list,count_curve);
-							if (script.generate_auto){generate_auto();}
+							generate_auto();
 							this.Repaint();
 							return;
 						}
@@ -11640,13 +11662,13 @@ class TerrainComposer extends EditorWindow
 		{
 			UnityEngine.Random.seed = EditorApplication.timeSinceStartup;
 			precurve_list[count_curve].offset = Vector2(UnityEngine.Random.Range(-precurve_list[count_curve].offset_range.x+precurve_list[count_curve].offset_middle.x,precurve_list[count_curve].offset_range.y+precurve_list[count_curve].offset_middle.x),UnityEngine.Random.Range(-precurve_list[count_curve].offset_range.y+precurve_list[count_curve].offset_middle.y,precurve_list[count_curve].offset_range.y+precurve_list[count_curve].offset_middle.y));
-			if (script.generate_auto){generate_auto();}
+			generate_auto();
 		}
 		if (GUILayout.Button("Reset",EditorStyles.miniButtonMid,GUILayout.Width(70)))
 		{
 			precurve_list[count_curve].offset = Vector2(0,0);
 			precurve_list[count_curve].offset_middle = Vector2(0,0);
-			if (script.generate_auto){generate_auto();}
+			generate_auto();
 		}
 		EditorGUILayout.EndHorizontal();							
 					
@@ -11661,6 +11683,21 @@ class TerrainComposer extends EditorWindow
 		EditorGUILayout.LabelField("Offset Y",GUILayout.Width(130));
 		precurve_list[count_curve].offset.y = EditorGUILayout.Slider(precurve_list[count_curve].offset.y,-precurve_list[count_curve].offset_range.y+precurve_list[count_curve].offset_middle.y,precurve_list[count_curve].offset_range.y+precurve_list[count_curve].offset_middle.y);
 		EditorGUILayout.EndHorizontal();
+		
+		EditorGUILayout.BeginHorizontal();
+		GUILayout.Space(space+105);
+		EditorGUILayout.LabelField("Rotate",GUILayout.Width(130));
+		precurve_list[count_curve].rotation = EditorGUILayout.Toggle(precurve_list[count_curve].rotation,GUILayout.Width(25));
+		EditorGUILayout.EndHorizontal();
+		
+		if (precurve_list[count_curve].rotation)
+		{
+			EditorGUILayout.BeginHorizontal();
+			GUILayout.Space(space+105);
+			EditorGUILayout.LabelField("Rotation value",GUILayout.Width(130));
+			precurve_list[count_curve].rotation_value = EditorGUILayout.Slider(precurve_list[count_curve].rotation_value,-180,180);
+			EditorGUILayout.EndHorizontal();
+		}
 	}
 	
 	function draw_offset_range(text: String,offset: Vector2,offset_range: Vector2,offset_middle: Vector2,space: int): Vector2
@@ -11701,7 +11738,7 @@ class TerrainComposer extends EditorWindow
 			if (GUILayout.Button("+",GUILayout.Width(25)))
 			{
 				add_subfilter(current_filter.presubfilter.subfilter_index.Count-1,prelayer,current_filter.presubfilter);
-				if (script.generate_auto){generate_auto();}
+				generate_auto();
 			}
 		    if (GUILayout.Button("-",GUILayout.Width(25)) && current_filter.presubfilter.subfilter_index.Count > 0)
 		    {
@@ -11712,10 +11749,10 @@ class TerrainComposer extends EditorWindow
 					}
 					else
 					{
-						Undo("Erase Subfilters");
+						UndoRegister("Erase Subfilters");
 						script.erase_subfilters(current_filter);
 					}
-			    	if (script.generate_auto){generate_auto();}
+			    	generate_auto();
 			    }
 			    else {
 					this.ShowNotification(GUIContent("Control click the '-' button to erase\nControl Shift click the '-' button to erase all"));
@@ -11733,7 +11770,7 @@ class TerrainComposer extends EditorWindow
 				{
 					current_filter.presubfilter.subfilters_active = !current_filter.presubfilter.subfilters_active;
 					script.change_subfilters_active(current_filter.presubfilter,key.shift);
-					if (script.generate_auto){generate_auto();}
+					generate_auto();
 				}
 				GUILayout.Space(162);
 			}
@@ -11805,7 +11842,7 @@ class TerrainComposer extends EditorWindow
 						if (GUILayout.Button("▲",GUILayout.Width(25)))
 						{
 							script.swap_subfilter(current_filter.presubfilter,count_subfilter,current_filter.presubfilter,count_subfilter-1);
-							if (script.generate_auto){generate_auto();}
+							generate_auto();
 						} 
 					}
 					else {
@@ -11816,7 +11853,7 @@ class TerrainComposer extends EditorWindow
 						if (GUILayout.Button("▼",GUILayout.Width(25)))
 						{
 							script.swap_subfilter(current_filter.presubfilter,count_subfilter,current_filter.presubfilter,count_subfilter+1);
-							if (script.generate_auto){generate_auto();}
+							generate_auto();
 						}
 					}
 					else {
@@ -11830,13 +11867,13 @@ class TerrainComposer extends EditorWindow
 					if (GUILayout.Button("+",GUILayout.Width(25)))
 					{
 						add_subfilter(count_subfilter,prelayer,current_filter.presubfilter);
-						if (script.generate_auto){generate_auto();}
+						generate_auto();
 					} 		 
 					if (GUILayout.Button("-",GUILayout.Width(25)))
 					{
 						if (key.control) {
 							erase_subfilter(count_subfilter,current_filter.presubfilter);
-							if (script.generate_auto){generate_auto();}
+							generate_auto();
 						}
 						else {
 							this.ShowNotification(GUIContent("Control click the '-' button to erase"));
@@ -11911,20 +11948,12 @@ class TerrainComposer extends EditorWindow
 								draw_image(current_subfilter.preimage,30+space,color_subfilter,true,2);							
 							}
 							
-							else if (current_subfilter.type == condition_type_enum.Always)
-							{
-								EditorGUILayout.BeginHorizontal();
-								GUILayout.Space(space+90);
-								EditorGUILayout.LabelField("Position",GUILayout.Width(145));
-								current_subfilter.curve_position = EditorGUILayout.Slider(current_subfilter.curve_position,0,1);
-								EditorGUILayout.EndHorizontal();
-							}
-							else if (current_subfilter.type == condition_type_enum.Splatmap) {
+							if (current_subfilter.type == condition_type_enum.Splatmap) {
 								EditorGUILayout.BeginHorizontal();
 								GUILayout.Space(space+90);
 								EditorGUILayout.LabelField("Splat texture",GUILayout.Width(145));
 								if (key.type == EventType.Repaint){splatRect = GUILayoutUtility.GetLastRect();}
-								if (current_subfilter.splat_index < script.terrains[current_layer.splat_output.splat_terrain].splatPrototypes.Count) {
+								if (current_subfilter.splat_index < script.masterTerrain.splatPrototypes.Count) {
 									GUI.color = Color.white;
 									EditorGUI.DrawPreviewTexture(Rect(splatRect.x+149,splatRect.y,50,50),script.terrains[0].splatPrototypes[current_subfilter.splat_index].texture);
 									GUILayout.Space(54);
@@ -11940,13 +11969,21 @@ class TerrainComposer extends EditorWindow
 								if (GUI.changed) {
 									if (current_subfilter.splat_index < 0) {current_subfilter.splat_index = 0;}
 									current_subfilter.splatmap = (current_subfilter.splat_index/4);
-									
+									gui_changed_old = true;
 								}
 								GUI.changed = gui_changed_old;
 								EditorGUILayout.EndHorizontal();
-								if (current_subfilter.splat_index < script.terrains[current_layer.splat_output.splat_terrain].splatPrototypes.Count) {
+								if (current_subfilter.splat_index < script.masterTerrain.splatPrototypes.Count) {
 									GUILayout.Space(35);
 								}
+							}
+							if (current_subfilter.type == condition_type_enum.Always || current_subfilter.type == condition_type_enum.Splatmap)
+							{
+								EditorGUILayout.BeginHorizontal();
+								GUILayout.Space(space+90);
+								EditorGUILayout.LabelField("Position",GUILayout.Width(145));
+								current_subfilter.curve_position = EditorGUILayout.Slider(current_subfilter.curve_position,0,1);
+								EditorGUILayout.EndHorizontal();
 							}
 							else if (current_subfilter.type == condition_type_enum.RayCast)
 							{
@@ -12259,7 +12296,7 @@ class TerrainComposer extends EditorWindow
 			if (GUILayout.Button(GUIContent(">Auto Search",tooltip_text),GUILayout.Width(95)))
 			{
 				if (key.shift) {
-					Undo("Auto Search Image");
+					UndoRegister("Auto Search Image");
 					script.strip_auto_search_file(preimage.auto_search);
 					auto_search_list(preimage);
 				} 
@@ -12649,7 +12686,7 @@ class TerrainComposer extends EditorWindow
 			if (GUILayout.Button(GUIContent(">Auto Search",tooltip_text),GUILayout.Width(95)))
 			{
 				if (key.shift) {
-					Undo("Auto Search Image");
+					UndoRegister("Auto Search Image");
 					script.strip_auto_search_file(raw.auto_search);
 					auto_search_raw(raw);
 				} 
@@ -13089,10 +13126,12 @@ class TerrainComposer extends EditorWindow
         	precolor_range.menu_rect = GUILayoutUtility.GetLastRect();
         	precolor_range.menu_rect.width = (precolor_range.text.Length*7)-15;
         	precolor_range.menu_rect.x += 14;
+        	precolor_range.menu_rect.y += script.settings.top_height;
+        	if (script.settings.top_height > 0) precolor_range.menu_rect.y += 3;
         }
         
         if (key.button == 1) { 	
-	    	if (check_point_in_rect(precolor_range.menu_rect,mouse_position - Vector2(-5,script.settings.top_height)) && key.type == EventType.layout)
+	    	if (check_point_in_rect(precolor_range.menu_rect,mouse_position - Vector2(-5,0)) && key.type == EventType.layout)
 			{
 				var menu: GenericMenu;
 	        	var userdata: menu_arguments_class[] = new menu_arguments_class[3];
@@ -13122,9 +13161,9 @@ class TerrainComposer extends EditorWindow
 			if (GUILayout.Button("-",GUILayout.Width(25)))
 			{
 				if (key.control) {
-					Undo("ColorGroup Erase");
+					UndoRegister("ColorGroup Erase");
 					current_layer.color_output.erase_precolor_range(precolor_range.index-1);
-					if (script.generate_auto){generate_auto();}
+					generate_auto();
 					this.Repaint();
 			        return;
 			    }
@@ -13167,7 +13206,7 @@ class TerrainComposer extends EditorWindow
 		        	}
 					else 
 					{
-						Undo("Erase Colors");
+						UndoRegister("Erase Colors");
 		        		precolor_range.clear_color_range();
 					}
 					
@@ -13188,7 +13227,7 @@ class TerrainComposer extends EditorWindow
         	{
 				if (GUILayout.Button(GUIContent("<Detect>",tooltip_text),GUILayout.Width(75)))
 			    {
-			    	Undo("Detect Colors");
+			    	UndoRegister("Detect Colors");
 	        		if (key.shift) {
 			    		precolor_range.detect_colors_image(current_preimage.image[0]);
 			    	}
@@ -13214,6 +13253,15 @@ class TerrainComposer extends EditorWindow
 		     
 		    precolor_range.palette = EditorGUILayout.Toggle(precolor_range.palette,GUILayout.Width(15));
 			
+			if (call_from == 3)
+			{
+				if (GUILayout.Button(">Set All",GUILayout.Width(65)))
+				{
+					script.set_all_tree_precolor_range(current_layer.tree_output,current_tree_number,key.shift);	
+					generate_auto();	
+				}
+			}
+			
 			if (precolor_range.color_range.Count > 0) {
 				EditorGUILayout.LabelField("");
 				if (GUILayout.Button("A",GUILayout.Width(20)))
@@ -13228,14 +13276,6 @@ class TerrainComposer extends EditorWindow
 //				precolor_range.interface_display = !precolor_range.interface_display;
 //			}
 			
-			if (call_from == 3)
-			{
-				if (GUILayout.Button(">Set All",GUILayout.Width(65)))
-				{
-					script.set_all_tree_precolor_range(current_layer.tree_output,current_tree_number,key.shift);	
-					if (script.generate_auto){generate_auto();}	
-				}
-			}
 		
 			EditorGUILayout.EndHorizontal();
 			
@@ -13306,9 +13346,9 @@ class TerrainComposer extends EditorWindow
 							{
 								if (key.control && !key.shift)
 								{
-									Undo("Default Curve");
+									UndoRegister("Default Curve");
 									precolor_range.color_range[count_color_range1].set_default();
-									if (script.generate_auto){generate_auto();}
+									generate_auto();
 								}
 								else if (key.alt)
 								{
@@ -13361,12 +13401,12 @@ class TerrainComposer extends EditorWindow
 									}
 								}
 								
-								if (script.generate_auto){generate_auto();}
+								generate_auto();
 							}
 							if (GUILayout.Button("-",GUILayout.Width(25)))
 							{
 								--precolor_range.color_range[count_color_range1].select_output;
-								if (script.generate_auto){generate_auto();}
+								generate_auto();
 							}
 							
 							if (precolor_range.color_range[count_color_range1].select_output < 0){precolor_range.color_range[count_color_range1].select_output = 0;}
@@ -13486,7 +13526,7 @@ class TerrainComposer extends EditorWindow
 				           			this.Repaint();
 				           			if (texture_tool){texture_tool.Repaint();}
 				           		}
-				           		if (script.generate_auto){generate_auto();}
+				           		generate_auto();
 				           	}
 			           	}
 						
@@ -13563,12 +13603,14 @@ class TerrainComposer extends EditorWindow
 	
 	function erase_description(prelayer: prelayer_class,count_description: int)
 	{
-		Undo("Erase LayerGroup");
+		UndoRegister("Erase LayerGroup");
 		script.erase_description(prelayer,count_description);
 	}
 	
 	function toggle_heightmap_output()
 	{
+		if (script.color_output) script.button_export = false;
+		
 		if (script.settings.showMeshes) {
 			ShowNotification(new GUIContent("Generate on Meshes is active. In this mode it is only possible to use Object output."));	
 			return;
@@ -13658,6 +13700,7 @@ class TerrainComposer extends EditorWindow
 	
 	function toggle_splat_output()
 	{
+		if (script.color_output) script.button_export = false;
 		if (script.settings.showMeshes) {
 			ShowNotification(new GUIContent("Generate on Meshes is active. In this mode it is only possible to use Object output."));	
 			return;
@@ -13704,6 +13747,7 @@ class TerrainComposer extends EditorWindow
 	
 	function toggle_tree_output()
 	{
+		if (script.color_output) script.button_export = false;
 		if (script.settings.showMeshes) {
 			ShowNotification(new GUIContent("Generate on Meshes is active. In this mode it is only possible to use Object output."));	
 			return;
@@ -13753,6 +13797,7 @@ class TerrainComposer extends EditorWindow
 	
 	function toggle_grass_output()
 	{
+		if (script.color_output) script.button_export = false;
 		if (script.settings.showMeshes) {
 			ShowNotification(new GUIContent("Generate on Meshes is active. In this mode it is only possible to use Object output."));	
 			return;
@@ -13799,6 +13844,7 @@ class TerrainComposer extends EditorWindow
 	
 	function toggle_object_output()
 	{
+		if (script.color_output) script.button_export = false;
 		if (!script.button_export)
 		{
 			if (key.alt)
@@ -13903,6 +13949,17 @@ class TerrainComposer extends EditorWindow
 	    else
 	    {
 	    	script.add_layer(prelayer,layer_number+1,prelayer.layer_output,description_position,layer_index,true,true,custom);
+	    	
+	    	prelayer.layer[layer_number+1].splat_output.splat_value.mode = SliderMode_Enum.MinMax;
+	    	prelayer.layer[layer_number+1].splat_output.splat_value.reset_value_multi();
+	    	prelayer.layer[layer_number+1].tree_output.tree_value.mode = SliderMode_Enum.MinMax;
+	    	prelayer.layer[layer_number+1].tree_output.tree_value.reset_value_multi();
+	    	prelayer.layer[layer_number+1].grass_output.grass_value.mode = SliderMode_Enum.MinMax;
+	    	prelayer.layer[layer_number+1].grass_output.grass_value.reset_value_multi();
+	    	prelayer.layer[layer_number+1].object_output.object_value.mode = SliderMode_Enum.MinMax;
+	    	prelayer.layer[layer_number+1].object_output.object_value.reset_value_multi();
+	    	
+	    	prelayer.layer[layer_number+1].splat_output.SyncSplatCustom(script.masterTerrain.splatPrototypes.Count);
 	    }
 	    script.layers_sort(prelayer);
 	}
@@ -13915,9 +13972,18 @@ class TerrainComposer extends EditorWindow
 
 	function erase_layer(prelayer: prelayer_class,layer_number: int,description_index: int,layer_index: int)
 	{
-		Undo("Erase Layer");
-	    script.erase_layer(prelayer,layer_number,description_index,layer_index,true,true,true);
-	    script.layers_sort(prelayer);
+		var current_layer: layer_class = prelayer.layer[layer_number];
+		if((current_layer.output == layer_output_enum.color && prelayer.view_color_layer) 
+	    	|| (current_layer.output == layer_output_enum.splat && prelayer.view_splat_layer)
+	    		|| (current_layer.output == layer_output_enum.tree && prelayer.view_tree_layer)
+	    			|| (current_layer.output == layer_output_enum.grass && prelayer.view_grass_layer)
+	    				|| (current_layer.output == layer_output_enum.object && prelayer.view_object_layer)
+	       					 || (current_layer.output == layer_output_enum.heightmap && prelayer.view_heightmap_layer))
+	    {
+			UndoRegister("Erase Layer");
+	    	script.erase_layer(prelayer,layer_number,description_index,layer_index,true,true,true);
+	    	script.layers_sort(prelayer);
+	    }
 	}
 	
 	function swap_layer(layer: layer_class,layer_number: int,prelayer: prelayer_class)
@@ -13991,7 +14057,7 @@ class TerrainComposer extends EditorWindow
 	
 	function erase_filter(filter_number: int,prefilter: prefilter_class)
 	{
-		Undo("Erase Filter");
+		UndoRegister("Erase Filter");
 		script.erase_filter(filter_number,prefilter);
 		if (prefilter.filter_index.Count > 0) {
 			script.filter[prefilter.filter_index[prefilter.filter_index.Count-1]].combine = false;
@@ -14016,7 +14082,7 @@ class TerrainComposer extends EditorWindow
 		        script.filter[filter_position].swap_select = false;
 		    	script.swap_filter_select = false;
 		        script.swap_filter2(prefilter.filter_index[filter_index],filter_position,true);
-		        if (script.generate_auto){generate_auto();}
+		        generate_auto();
 		    }
 		 }
 		 else
@@ -14098,7 +14164,7 @@ class TerrainComposer extends EditorWindow
 	
 	function erase_subfilter(subfilter_number: int,presubfilter: presubfilter_class)
 	{
-		Undo("Erase Subfilter");
+		UndoRegister("Erase Subfilter");
 		script.erase_subfilter(subfilter_number,presubfilter);
 	}	
 	
@@ -14120,7 +14186,7 @@ class TerrainComposer extends EditorWindow
 				script.subfilter[subfilter_position].swap_select = false;
 				script.swap_subfilter_select = false;
 				script.swap_subfilter2(presubfilter.subfilter_index[subfilter_number],subfilter_position,true);
-				if (script.generate_auto){generate_auto();}
+				generate_auto();
 			}
 		}
 		else
@@ -14157,7 +14223,7 @@ class TerrainComposer extends EditorWindow
 	
 	function erase_color_range(color_range_number: int,precolor_range: precolor_range_class)
 	{
-		Undo("Erase Color Range");
+		UndoRegister("Erase Color Range");
 		precolor_range.erase_color_range(color_range_number);
 	}
 	
@@ -14195,7 +14261,7 @@ class TerrainComposer extends EditorWindow
 	}
 	
 	// splat functions
-	function add_splat(splat_output: splat_output_class,splat_number: int,terrain_number: int,copy: boolean)
+	function add_splat(splat_output: splat_output_class,splat_number: int,copy: boolean)
 	{
 		var splat_index: int = 0;
 		
@@ -14209,18 +14275,21 @@ class TerrainComposer extends EditorWindow
 			{
 				splat_index = splat_output.splat[splat_number]+1;
 				
-				if (splat_index+1 > script.terrains[terrain_number].splatPrototypes.Count-1)
+				if (splat_index+1 > script.masterTerrain.splatPrototypes.Count-1)
 				{
-					if (script.terrains[terrain_number].splatPrototypes.Count > 0){splat_index = script.terrains[terrain_number].splatPrototypes.Count-1;}
+					if (script.masterTerrain.splatPrototypes.Count > 0){splat_index = script.masterTerrain.splatPrototypes.Count-1;}
 				}
 			}
 		}
 		
-		splat_output.add_splat(splat_number+1,splat_index);
+		splat_output.add_splat(splat_number+1,splat_index,script.masterTerrain.splatPrototypes.Count);
+		if (copy) {
+			splat_output.splat_custom[splat_number+1] = script.copy_splat_custom(splat_output.splat_custom[splat_number]);
+		}
 	}
 	
 	// tree functions
-	function add_tree(tree_number: int,tree_output: tree_output_class,terrain_number: int)
+	function add_tree(tree_number: int,tree_output: tree_output_class)
 	{
 		if (key.shift && tree_number >= 0)
 		{
@@ -14241,9 +14310,9 @@ class TerrainComposer extends EditorWindow
 			{
 				tree_output.tree[tree_number+1].prototypeindex = tree_output.tree[tree_number].prototypeindex+1;
 			
-				if (tree_output.tree[tree_number+1].prototypeindex+1 > script.terrains[terrain_number].treePrototypes.Count-1)
+				if (tree_output.tree[tree_number+1].prototypeindex+1 > script.masterTerrain.treePrototypes.Count-1)
 				{
-					if (script.terrains[terrain_number].treePrototypes.Count > 0){tree_output.tree[tree_number+1].prototypeindex = script.terrains[terrain_number].treePrototypes.Count-1;}
+					if (script.masterTerrain.treePrototypes.Count > 0){tree_output.tree[tree_number+1].prototypeindex = script.masterTerrain.treePrototypes.Count-1;}
 				}
 			}
 		}
@@ -14251,7 +14320,7 @@ class TerrainComposer extends EditorWindow
 	
 	function erase_tree(tree_number: int,tree_output: tree_output_class)
 	{
-		Undo("Erase Tree");
+		UndoRegister("Erase Tree");
 		tree_output.erase_tree(tree_number,script);
 	}
 	
@@ -14288,7 +14357,7 @@ class TerrainComposer extends EditorWindow
 	}
 	
 	// grass functions
-	function add_grass(grass_output: grass_output_class,grass_number: int,terrain_number: int,copy: boolean)
+	function add_grass(grass_output: grass_output_class,grass_number: int,copy: boolean)
 	{
 		grass_output.add_grass(grass_number+1);
 		
@@ -14299,9 +14368,9 @@ class TerrainComposer extends EditorWindow
 			{
 				grass_output.grass[grass_number+1].prototypeindex = grass_output.grass[grass_number].prototypeindex+1;
 				
-				if (grass_output.grass[grass_number+1].prototypeindex+1 > script.terrains[terrain_number].detailPrototypes.Count-1)
+				if (grass_output.grass[grass_number+1].prototypeindex+1 > script.masterTerrain.detailPrototypes.Count-1)
 				{
-					if (script.terrains[terrain_number].detailPrototypes.Count > 0){grass_output.grass[grass_number+1].prototypeindex = script.terrains[terrain_number].detailPrototypes.Count-1;}
+					if (script.masterTerrain.detailPrototypes.Count > 0){grass_output.grass[grass_number+1].prototypeindex = script.masterTerrain.detailPrototypes.Count-1;}
 				}
 			}
 		}
@@ -14326,7 +14395,7 @@ class TerrainComposer extends EditorWindow
 	
 	function erase_object(object_number: int,object_output: object_output_class)
 	{
-		Undo ("Object Erase");
+		UndoRegister("Object Erase");
 		script.erase_object(object_output,object_number);
 	}
 	
@@ -14529,7 +14598,7 @@ class TerrainComposer extends EditorWindow
 	
 	function save_color_layout()
 	{
-		var path1: String = "Assets/TerrainComposer/Templates/new_setup.prefab";
+		var path1: String = install_path+"/Templates/new_setup.prefab";
 		TerrainComposer_Clone = Instantiate(AssetDatabase.LoadAssetAtPath(path1,GameObject));
 		TerrainComposer_Clone.name = "<TC_Clone>";
 		var script_clone: terraincomposer_save = TerrainComposer_Clone.GetComponent(terraincomposer_save);
@@ -14543,7 +14612,7 @@ class TerrainComposer extends EditorWindow
 	
 	function load_color_layout()
 	{
-		var path1: String = "Assets/TerrainComposer/Templates/new_setup.prefab";
+		var path1: String = install_path+"/Templates/new_setup.prefab";
 		TerrainComposer_Clone = Instantiate(AssetDatabase.LoadAssetAtPath(path1,GameObject));
 		TerrainComposer_Clone.name = "<TC_Clone>";
 		var script_clone: terraincomposer_save = TerrainComposer_Clone.GetComponent(terraincomposer_save);
@@ -14644,19 +14713,20 @@ class TerrainComposer extends EditorWindow
     	set_all_image_import_settings();
     	check_terrains();	
     	
+    	script.convert_software_version();
     	this.Repaint();
     }
     
     function load_global_settings()
     {
-    	var path: String = "Assets/TerrainComposer/Templates/global_settings.prefab";
+    	var path: String = install_path+"/Templates/global_settings.prefab";
     	
-    	if (!File.Exists(Application.dataPath+"/TerrainComposer/Templates/global_settings.prefab")) {
-    		 if (!File.Exists(Application.dataPath+"/TerrainComposer/Templates/global_settings 1.prefab")) {
-    		 	FileUtil.CopyFileOrDirectory ("Assets/TerrainComposer/Templates/global_settings 2.prefab","Assets/TerrainComposer/Templates/global_settings.prefab");
+    	if (!File.Exists(Application.dataPath+install_path.Replace("Assets","")+"/Templates/global_settings.prefab")) {
+    		 if (!File.Exists(Application.dataPath+install_path.Replace("Assets","")+"/Templates/global_settings 1.prefab")) {
+    		 	FileUtil.CopyFileOrDirectory (install_path+"/Templates/global_settings 2.prefab",install_path+"/Templates/global_settings.prefab");
     		 }
     		 else {
-    		 	FileUtil.CopyFileOrDirectory ("Assets/TerrainComposer/Templates/global_settings 1.prefab","Assets/TerrainComposer/Templates/global_settings.prefab");
+    		 	FileUtil.CopyFileOrDirectory (install_path+"/Templates/global_settings 1.prefab",install_path+"/Templates/global_settings.prefab");
     		 }
     		 return;
     	}
@@ -14705,7 +14775,7 @@ class TerrainComposer extends EditorWindow
      
     function load_layer(prelayer_number: int,layer_number: int,path: String): boolean
 	{
-		Undo("Load Layer");
+		UndoRegister("Load Layer");
 		var Load_Layer: GameObject;
 		
 		Load_Layer = Instantiate(AssetDatabase.LoadAssetAtPath(path,GameObject));
@@ -14830,7 +14900,7 @@ class TerrainComposer extends EditorWindow
 	
 	function load_layergroup(path1: String,prelayer_number: int,description_number: int,layer_number: int)
 	{
-		Undo("Load LayerGroup");
+		UndoRegister("Load LayerGroup");
 		var converted: boolean = false;
 		
 		var Load_LayerGroup: GameObject = Instantiate(AssetDatabase.LoadAssetAtPath(path1,GameObject));
@@ -14995,15 +15065,15 @@ class TerrainComposer extends EditorWindow
     	if (obj == "terraincomposer_info"){this.ShowNotification(GUIContent("TerrainComposer Version: Final "+read_version().ToString("F2")));}
     	if (obj == "getting_started")
     	{
-    		Application.OpenURL(Application.dataPath+"/TerrainComposer/TerrainComposer Getting Started.pdf");
+    		Application.OpenURL(Application.dataPath+install_path.Replace("Assets","")+"/TerrainComposer Getting Started.pdf");
     	}
     	if (obj == "main_manual")
     	{
-    		Application.OpenURL(Application.dataPath+"/TerrainComposer/TerrainComposer.pdf");
+    		Application.OpenURL(Application.dataPath+install_path.Replace("Assets","")+"/TerrainComposer.pdf");
     	}
     	if (obj == "wc_manual")
     	{
-    		Application.OpenURL(Application.dataPath+"/TerrainComposer/WorldComposer.pdf");
+    		Application.OpenURL(Application.dataPath+install_path.Replace("Assets","")+"/WorldComposer.pdf");
     	}
     	if (obj == "update")
     	{
@@ -15041,7 +15111,7 @@ class TerrainComposer extends EditorWindow
     		script.settings.database_display = !script.settings.database_display;
     		if (script.settings.database_display)
     		{
-    			Undo("Fix Database");
+    			UndoRegister("Fix Database");
     			script.loop_prelayer("(fix)(inf)",0,true);
     		}
     	}
@@ -15056,13 +15126,7 @@ class TerrainComposer extends EditorWindow
     	}
     	if (obj == "measure_tool")
     	{
-    		script.measure_tool = !script.measure_tool;
-    		if (!script.measure_tool){script.measure_tool_active = false;}
-    		else
-        	{
-        		script.measure_tool_active = true;
-        		if (script.measure_tool_undock){create_window_measure_tool();}
-        	}
+    		ToggleMeasureTool();
     	}
     	if (obj == "quick_tools")
     	{
@@ -15098,13 +15162,13 @@ class TerrainComposer extends EditorWindow
     	if (obj == "new"){new_window = true;}
     	if (obj == "open")
     	{
-    		path = EditorUtility.OpenFilePanel("Open File",Application.dataPath+"/TerrainComposer/save/projects","prefab");
+    		path = EditorUtility.OpenFilePanel("Open File",Application.dataPath+install_path.Replace("Assets","")+"/save/projects","prefab");
     		
     		if (path.Length != 0){load_terraincomposer(path,true,true,true);}
     	}
     	if (obj == "save")
     	{
-    		path = EditorUtility.SaveFilePanel("Save File",Application.dataPath+"/TerrainComposer/save/projects","","prefab");
+    		path = EditorUtility.SaveFilePanel("Save File",Application.dataPath+install_path.Replace("Assets","")+"/save/projects","","prefab");
     		
     		if (path.Length != 0)
     		{
@@ -15140,19 +15204,19 @@ class TerrainComposer extends EditorWindow
     	
     	if (command == "new")
     	{
-    		Undo("New Layer");
+    		UndoRegister("New Layer");
     		script.prelayers[menu_prelayer_number].new_layer(menu_layer_number,script.filter);
     	}
     	if (command == "open")
     	{
-    		path = EditorUtility.OpenFilePanel("Open File",Application.dataPath+"/TerrainComposer/save/layers","prefab");
+    		path = EditorUtility.OpenFilePanel("Open File",Application.dataPath+install_path.Replace("Assets","")+"/save/layers","prefab");
     		
     		if (path.Length != 0){load_layer(menu_prelayer_number,menu_layer_number,path.Replace(Application.dataPath,"Assets"));}
     	}
     	
     	if (command == "save")
     	{
-    		path = EditorUtility.SaveFilePanel("Save File",Application.dataPath+"/TerrainComposer/save/layers","","prefab");
+    		path = EditorUtility.SaveFilePanel("Save File",Application.dataPath+install_path.Replace("Assets","")+"/save/layers","","prefab");
     		
     		if (path.Length != 0)
     		{
@@ -15192,7 +15256,7 @@ class TerrainComposer extends EditorWindow
     	}
     	if (command == "open")
     	{
-    		path = EditorUtility.OpenFilePanel("Open File",Application.dataPath+"/TerrainComposer/save/LayerGroups","prefab");
+    		path = EditorUtility.OpenFilePanel("Open File",Application.dataPath+install_path.Replace("Assets","")+"/save/LayerGroups","prefab");
     		
     		if (path.Length != 0)
     		{
@@ -15201,7 +15265,7 @@ class TerrainComposer extends EditorWindow
     	}
     	if (command == "save")
     	{
-    		path = EditorUtility.SaveFilePanel("Save File",Application.dataPath+"/TerrainComposer/save/LayerGroups","","prefab");
+    		path = EditorUtility.SaveFilePanel("Save File",Application.dataPath+install_path.Replace("Assets","")+"/save/LayerGroups","","prefab");
     		
     		if (path.Length != 0)
     		{
@@ -15211,16 +15275,16 @@ class TerrainComposer extends EditorWindow
     	
     	if (command == "fold_in") {
     		script.prelayers[menu_prelayer_number].predescription.description[menu_description_number].layers_foldout = false;
-    		script.prelayers[menu_prelayer_number].change_layers_foldout_from_description(menu_description_number,false);
+    		script.prelayers[menu_prelayer_number].change_layers_foldout_from_description(menu_description_number,false,script.heightmap_output,script.color_output,script.splat_output,script.tree_output,script.grass_output,script.object_output);
     	}
     	if (command == "fold_out") {
     		script.prelayers[menu_prelayer_number].predescription.description[menu_description_number].layers_foldout = true;
-    		script.prelayers[menu_prelayer_number].change_layers_foldout_from_description(menu_description_number,false);
+    		script.prelayers[menu_prelayer_number].change_layers_foldout_from_description(menu_description_number,false,script.heightmap_output,script.color_output,script.splat_output,script.tree_output,script.grass_output,script.object_output);
     	}
     	
 //    	if (command == "sort")
 //    	{
-//    		Undo("Sort LayerGroup");
+//    		UndoRegister("Sort LayerGroup");
 //	    	script.layer_sort(script.prelayers[menu_prelayer_number],menu_description_number);                            
 //        }
     }
@@ -15231,13 +15295,13 @@ class TerrainComposer extends EditorWindow
     	
     	if (command == "open")
     	{
-    		path = EditorUtility.OpenFilePanel("Open File",Application.dataPath+"/TerrainComposer/save/colors","prefab");
+    		path = EditorUtility.OpenFilePanel("Open File",Application.dataPath+install_path.Replace("Assets","")+"/save/colors","prefab");
     		
     		if (path.Length != 0){load_precolor_range(path);}
     	}
     	if (command == "save")
     	{
-    		path = EditorUtility.SaveFilePanel("Save File",Application.dataPath+"/TerrainComposer/save/colors","","prefab");
+    		path = EditorUtility.SaveFilePanel("Save File",Application.dataPath+install_path.Replace("Assets","")+"/save/colors","","prefab");
     		
     		if (path.Length != 0)
     		{
@@ -15303,24 +15367,24 @@ class TerrainComposer extends EditorWindow
     	
     	else if (obj.name == "set_zero")
     	{
-    		Undo("Set Zero Curve");
+    		UndoRegister("Set Zero Curve");
     		obj.precurve.set_zero();
-			if (script.generate_auto){generate_auto();}
+			generate_auto();
     	}
     	else if (obj.name == "invert")
     	{
     		obj.precurve.set_invert();
-    		if (script.generate_auto){generate_auto();}
+    		generate_auto();
     	}
     	else if (obj.name == "default")
     	{
-    		Undo("Default Curve");
+    		UndoRegister("Default Curve");
 			obj.precurve.set_default();
-			if (script.generate_auto){generate_auto();}
+			generate_auto();
     	}
     	if (obj.name == "set default")
     	{
-    		Undo("Set Default Curve");
+    		UndoRegister("Set Default Curve");
 			obj.precurve.set_as_default();
 		}
     	else if (obj.name == "default_perlin")
@@ -15737,12 +15801,12 @@ class TerrainComposer extends EditorWindow
 				colliderScript.terrainData = terrainData;
 				
 				script.terrains[index].terrain = terrain;
+				// script.setTerrainAreaMax(script.terrains[index]);
 				script.set_terrain_settings(script.terrains[index],"(all)");
-				script.setTerrainAreaMax(script.terrains[index]);
-				script.set_terrain_splat_textures(script.terrains[index],script.terrains[index]);
-				script.set_terrain_trees(script.terrains[index]);
-				script.set_terrain_details(script.terrains[index]);
-								
+				// script.set_terrain_splat_textures(script.terrains[index],script.terrains[0]);
+				// script.set_terrain_trees(script.terrains[index]);
+				// script.set_terrain_details(script.terrains[index]);
+												
 				#if !UNITY_3_4 && !UNITY_3_5
 		    	if (script.settings.copy_terrain_material) {
 		    		terrain.materialTemplate = script.terrains[0].terrain.materialTemplate;
@@ -15756,18 +15820,18 @@ class TerrainComposer extends EditorWindow
 				AssetDatabase.CreateAsset(terrainData,path);
 				
 				script.set_terrain_parameters(script.terrains[index],script.terrains[0]);
-				script.get_terrain_parameter_settings(script.terrains[index]);
+				// script.get_terrain_parameter_settings(script.terrains[index]);
 				
 				script.terrains[index].foldout = false;
 		    	if (script.terrains[0].rtp_script) {script.assign_rtp_single(script.terrains[index]);}
 		    }
 		}
 		
-		// script.set_all_terrain_area(script.terrains[0]);
-		// script.assign_all_terrain_splat_alpha();
-		// script.set_all_terrain_splat_textures(script.terrains[0],true,true);
-		// script.set_all_terrain_trees(script.terrains[0]);
-		// script.set_all_terrain_details(script.terrains[0]);
+		script.set_all_terrain_area(script.terrains[0]);
+		script.assign_all_terrain_splat_alpha();
+		script.set_all_terrain_splat_textures(script.terrains[0],true,true);
+		script.set_all_terrain_trees(script.terrains[0]);
+		script.set_all_terrain_details(script.terrains[0]);
 		
 		fit_all_terrains(script.terrains[0]);
 	}
@@ -15876,7 +15940,7 @@ class TerrainComposer extends EditorWindow
 	    		if (global_script.settings.download.isDone) {
 	        		global_script.settings.downloading = 0;
 	        		if (!global_script.settings.download.error) {
-	        			File.WriteAllBytes(Application.dataPath+"/TerrainComposer/Download/TerrainComposer_Island.unitypackage",global_script.settings.download.bytes);
+	        			File.WriteAllBytes(Application.dataPath+install_path.Replace("Assets","")+"/Download/TerrainComposer_Island.unitypackage",global_script.settings.download.bytes);
 	        		}
 	        	}
 	        } 
@@ -15891,9 +15955,9 @@ class TerrainComposer extends EditorWindow
 	        		global_script.settings.downloading2 = 0;
 	        		if (!global_script.settings.download2.error) {
 	        			#if UNITY_3_4 || UNITY_3_5 || UNITY_4_0 || UNITY_4_01 || UNITY_4_2 || UNITY_4_3 || UNITY_4_4 || UNITY_4_5 || UNITY_4_6 
-	        			File.WriteAllBytes(Application.dataPath+"/TerrainComposer/Download/TerrainComposer_Examples1.2.unitypackage",global_script.settings.download2.bytes);
+	        			File.WriteAllBytes(Application.dataPath+install_path.Replace("Assets","")+"/Download/TerrainComposer_Examples1.2.unitypackage",global_script.settings.download2.bytes);
 	        			#else
-	        			File.WriteAllBytes(Application.dataPath+"/TerrainComposer/Download/TerrainComposer_Examples5.0.unitypackage",global_script.settings.download2.bytes);
+	        			File.WriteAllBytes(Application.dataPath+install_path.Replace("Assets","")+"/Download/TerrainComposer_Examples5.0.unitypackage",global_script.settings.download2.bytes);
 	        			#endif
 	        		}
 	        	}
@@ -15956,7 +16020,7 @@ class TerrainComposer extends EditorWindow
 	        		script.settings.loading = 0;
 	        		script.settings.update_version2 = true;
 	        		script.settings.update_version = false;
-	        		File.WriteAllBytes(Application.dataPath+"/TerrainComposer/Update/TerrainComposer.unitypackage",script.settings.contents.bytes);
+	        		File.WriteAllBytes(Application.dataPath+install_path.Replace("Assets","")+"/Update/TerrainComposer.unitypackage",script.settings.contents.bytes);
 	        		if (update_select < 3)
 	        		{
 	        			script.settings.update_display = true;
@@ -15964,11 +16028,11 @@ class TerrainComposer extends EditorWindow
 	        		else if (update_select == 3)
 	        		{
 	        			script.settings.update_display = true;
-	        			import_contents(Application.dataPath+"/TerrainComposer/Update/TerrainComposer.unitypackage",false);
+	        			import_contents(Application.dataPath+install_path.Replace("Assets","")+"/Update/TerrainComposer.unitypackage",false);
 	        		}
 	        		else if (update_select == 4)
 	        		{
-	        			import_contents(Application.dataPath+"/TerrainComposer/Update/TerrainComposer.unitypackage",false);
+	        			import_contents(Application.dataPath+install_path.Replace("Assets","")+"/Update/TerrainComposer.unitypackage",false);
 	        		}
 	        	}
 	        }
@@ -15994,28 +16058,28 @@ class TerrainComposer extends EditorWindow
 	    }
 	}
 	
-	function init_color_splat_textures()
-	{
-		if (global_script.settings.color_splatPrototypes.Length < 4) {
-			global_script.settings.color_splatPrototypes = new splatPrototype_class[4];
-			for (var count_splat: int = 0;count_splat < 4;++count_splat) {
-				global_script.settings.color_splatPrototypes[count_splat] = new splatPrototype_class();
-			}
-		}
-		
-		if (!global_script.settings.color_splatPrototypes[3].texture)
-		{
-			global_script.settings.color_splatPrototypes[0].texture = AssetDatabase.LoadAssetAtPath("Assets/TerrainComposer/Templates/Textures/ground_red.png",Texture) as Texture2D;	
-			global_script.settings.color_splatPrototypes[1].texture = AssetDatabase.LoadAssetAtPath("Assets/TerrainComposer/Templates/Textures/ground_green.png",Texture) as Texture2D;	
-			global_script.settings.color_splatPrototypes[2].texture = AssetDatabase.LoadAssetAtPath("Assets/TerrainComposer/Templates/Textures/ground_blue.png",Texture) as Texture2D;	
-			global_script.settings.color_splatPrototypes[3].texture = AssetDatabase.LoadAssetAtPath("Assets/TerrainComposer/Templates/Textures/black.png",Texture) as Texture2D;	
-			
-			set_image_import_settings(global_script.settings.color_splatPrototypes[0].texture,1,1,-1,-1);
-			set_image_import_settings(global_script.settings.color_splatPrototypes[1].texture,1,1,-1,-1);
-			set_image_import_settings(global_script.settings.color_splatPrototypes[2].texture,1,1,-1,-1);
-			set_image_import_settings(global_script.settings.color_splatPrototypes[3].texture,1,1,-1,-1);
-		}
-	}
+//	function init_color_splat_textures()
+//	{
+//		if (global_script.settings.color_splatPrototypes.Length < 4) {
+//			global_script.settings.color_splatPrototypes = new splatPrototype_class[4];
+//			for (var count_splat: int = 0;count_splat < 4;++count_splat) {
+//				global_script.settings.color_splatPrototypes[count_splat] = new splatPrototype_class();
+//			}
+//		}
+//		
+//		if (!global_script.settings.color_splatPrototypes[3].texture)
+//		{
+//			global_script.settings.color_splatPrototypes[0].texture = AssetDatabase.LoadAssetAtPath("Assets/TerrainComposer/Templates/Textures/ground_red.png",Texture) as Texture2D;	
+//			global_script.settings.color_splatPrototypes[1].texture = AssetDatabase.LoadAssetAtPath("Assets/TerrainComposer/Templates/Textures/ground_green.png",Texture) as Texture2D;	
+//			global_script.settings.color_splatPrototypes[2].texture = AssetDatabase.LoadAssetAtPath("Assets/TerrainComposer/Templates/Textures/ground_blue.png",Texture) as Texture2D;	
+//			global_script.settings.color_splatPrototypes[3].texture = AssetDatabase.LoadAssetAtPath("Assets/TerrainComposer/Templates/Textures/black.png",Texture) as Texture2D;	
+//			
+//			set_image_import_settings(global_script.settings.color_splatPrototypes[0].texture,1,1,-1,-1);
+//			set_image_import_settings(global_script.settings.color_splatPrototypes[1].texture,1,1,-1,-1);
+//			set_image_import_settings(global_script.settings.color_splatPrototypes[2].texture,1,1,-1,-1);
+//			set_image_import_settings(global_script.settings.color_splatPrototypes[3].texture,1,1,-1,-1);
+//		}
+//	}
 	
 	function init_colormap()
 	{
@@ -16025,44 +16089,44 @@ class TerrainComposer extends EditorWindow
 			{
 				if (!script.terrains[count_terrain1].colormap.texture)
 				{
-					script.terrains[count_terrain1].colormap.texture = AssetDatabase.LoadAssetAtPath("Assets/TerrainComposer/Templates/Textures/black.png",Texture) as Texture2D;	
+					script.terrains[count_terrain1].colormap.texture = AssetDatabase.LoadAssetAtPath(install_path+"/Templates/Textures/black.png",Texture) as Texture2D;	
 				}
 			}
 		}
 	}
 	
-	function set_terrain_color_textures(): boolean
-	{
-		var refresh_rtp: boolean = false;
-		
-		if (script.terrains[0].rtp_script) {
-			if (script.terrains[0].rtp_script.ColorGlobal) {
-				// set_rtp_colormap_import_settings();
-				return true;
-			}
-		}
-		
-		for (var count_terrain1: int = 0;count_terrain1 < script.terrains.Count;++count_terrain1)
-		{
-			if (!script.terrains[count_terrain1].terrain){continue;}
-			if (!script.terrains[count_terrain1].terrain.terrainData){continue;}
-			script.check_synchronous_terrain_textures(script.terrains[count_terrain1]);
-			if (!script.terrains[count_terrain1].splat_synchronous)
-			{
-				init_color_splat_textures();
-				script.set_terrain_color_textures(script.terrains[count_terrain1]);
-				// assign_all_terrain_splat_alpha();
-				script.check_synchronous_terrain_textures(script.terrains[count_terrain1]);
-				refresh_rtp = true;
-			}
-		}
-		
-		if (refresh_rtp && script.terrains[0].rtp_script) {
-			script.terrains[0].rtp_script.globalSettingsHolder.RefreshAll();
-		}
-		
-		return false;
-	}
+//	function set_terrain_color_textures(): boolean
+//	{
+//		var refresh_rtp: boolean = false;
+//		
+//		if (script.terrains[0].rtp_script) {
+//			if (script.terrains[0].rtp_script.ColorGlobal) {
+//				// set_rtp_colormap_import_settings();
+//				return true;
+//			}
+//		}
+//		
+//		for (var count_terrain1: int = 0;count_terrain1 < script.terrains.Count;++count_terrain1)
+//		{
+//			if (!script.terrains[count_terrain1].terrain){continue;}
+//			if (!script.terrains[count_terrain1].terrain.terrainData){continue;}
+//			script.check_synchronous_terrain_textures(script.terrains[count_terrain1]);
+//			if (!script.terrains[count_terrain1].splat_synchronous)
+//			{
+//				init_color_splat_textures();
+//				script.set_terrain_color_textures(script.terrains[count_terrain1]);
+//				// assign_all_terrain_splat_alpha();
+//				script.check_synchronous_terrain_textures(script.terrains[count_terrain1]);
+//				refresh_rtp = true;
+//			}
+//		}
+//		
+//		if (refresh_rtp && script.terrains[0].rtp_script) {
+//			script.terrains[0].rtp_script.globalSettingsHolder.RefreshAll();
+//		}
+//		
+//		return false;
+//	}
 	
 	function set_rtp_colormap_import_settings()
 	{
@@ -16171,7 +16235,7 @@ class TerrainComposer extends EditorWindow
 	
 	function assign_combinechildren()
 	{
-		script.Combine_Children = AssetDatabase.LoadAssetAtPath("Assets/TerrainComposer/CombineChildren.prefab",GameObject);
+		script.Combine_Children = AssetDatabase.LoadAssetAtPath(install_path+"/CombineChildren.prefab",GameObject);
 	}
 	
 	function import_contents(path: String,window: boolean)
@@ -16242,7 +16306,11 @@ class TerrainComposer extends EditorWindow
 		map_window = EditorWindow.GetWindow(Type.GetType("Map_tc"));
 				
 		// preview_window.minSize = Vector2(1536,768);
+		#if UNITY_3_4 || UNITY_3_5 || UNITY_4_0 || UNITY_4_01 || UNITY_4_2 || UNITY_4_3 || UNITY_4_4 || UNITY_4_5 || UNITY_4_6 || UNITY_5_0
 		map_window.title = text;
+		#else
+		map_window.titleConent = new GUIContent(text);
+		#endif
 		map_window.display_text = false;
 		map_window.minSize = Vector2(8,8);
 		// preview_window.maxSize = Vector2(1600,800);
@@ -16275,10 +16343,33 @@ class TerrainComposer extends EditorWindow
 	{
 		if (!texture){return;}
 		preview_window = EditorWindow.GetWindow(ShowTexture);
-		if (preview_window.texture == texture){preview_window.Close();return;}
+		if (preview_window.texture == texture && !preview_window.displaySplat){preview_window.Close();return;}
 		preview_window.minSize = Vector2(512,512);
+		#if UNITY_3_4 || UNITY_3_5 || UNITY_4_0 || UNITY_4_01 || UNITY_4_2 || UNITY_4_3 || UNITY_4_4 || UNITY_4_5 || UNITY_4_6 || UNITY_5_0
 		preview_window.title = text;
+		#else
+		preview_window.titleContent = new GUIContent(text);
+		#endif
 		preview_window.texture = texture;
+		preview_window.display_text = false;
+		preview_window.displaySplat = false;
+	}
+	
+	function create_preview_window(preterrain: terrain_class,splat_custom: splat_custom_class)
+	{
+		preview_window = EditorWindow.GetWindow(ShowTexture);
+		if (preview_window.splat_custom == splat_custom && preview_window.texture == null){preview_window.Close();return;}
+		preview_window.minSize = Vector2(512,512);
+		#if UNITY_3_4 || UNITY_3_5 || UNITY_4_0 || UNITY_4_01 || UNITY_4_2 || UNITY_4_3 || UNITY_4_4 || UNITY_4_5 || UNITY_4_6 || UNITY_5_0
+		preview_window.title = "Splat Mix";
+		#else
+		preview_window.titleContent = new GUIContent("Splat Mix");
+		#endif
+		preview_window.displaySplat = true;
+		preview_window.splatPrototypes = preterrain.splatPrototypes;
+		preview_window.splat_custom = splat_custom;
+		preview_window.texture = null;
+		
 		preview_window.display_text = false;
 	}
 	
@@ -16288,7 +16379,11 @@ class TerrainComposer extends EditorWindow
 		// if (preview_window.texture == texture){preview_window.Close();return;}
 		// select_window.minSize = Vector2(512,512);
 		select_window.mode = mode;
+		#if UNITY_3_4 || UNITY_3_5 || UNITY_4_0 || UNITY_4_01 || UNITY_4_2 || UNITY_4_3 || UNITY_4_4 || UNITY_4_5 || UNITY_4_6 || UNITY_5_0
 		select_window.title = "Select";
+		#else
+		select_window.titleContent = new GUIContent("Select");
+		#endif
 		select_window.script = script;
 		select_window.tc_script = this;
 		select_window.global_script = global_script;
@@ -16300,7 +16395,11 @@ class TerrainComposer extends EditorWindow
 		preview_window = EditorWindow.GetWindow(ShowTexture);
 		if (preview_window.texture == texture){preview_window.Close();return;}
 		preview_window.minSize = Vector2(512,512);
+		#if UNITY_3_4 || UNITY_3_5 || UNITY_4_0 || UNITY_4_01 || UNITY_4_2 || UNITY_4_3 || UNITY_4_4 || UNITY_4_5 || UNITY_4_6 || UNITY_5_0
 		preview_window.title = text;
+		#else
+		preview_window.titleContent = new GUIContent(text);
+		#endif
 		preview_window.texture = texture;
 		preview_window.text = input;
 		preview_window.display_text = true;
@@ -16320,7 +16419,7 @@ class TerrainComposer extends EditorWindow
 	
 	function read_version(): float
 	{
-		var sr: StreamReader = new File.OpenText(Application.dataPath+"/TerrainComposer/Update/version.txt");
+		var sr: StreamReader = new File.OpenText(Application.dataPath+install_path.Replace("Assets","")+"/Update/version.txt");
 		var text: String = sr.ReadLine();
 		sr.Close();
 		
@@ -16332,16 +16431,16 @@ class TerrainComposer extends EditorWindow
 	
 	function write_check(text: String)
 	{
-		var sw: StreamWriter = new StreamWriter(Application.dataPath+"/TerrainComposer/Update/check.txt");
+		var sw: StreamWriter = new StreamWriter(Application.dataPath+install_path.Replace("Assets","")+"/Update/check.txt");
 		sw.WriteLine(text);
 		sw.Close();
 	}
 	
 	function read_check(): int
 	{
-		if (!File.Exists(Application.dataPath+"/TerrainComposer/Update/check.txt")){write_check("1");}
+		if (!File.Exists(Application.dataPath+install_path.Replace("Assets","")+"/Update/check.txt")){write_check("1");}
 		
-		var sr: StreamReader = new File.OpenText(Application.dataPath+"/TerrainComposer/Update/check.txt");
+		var sr: StreamReader = new File.OpenText(Application.dataPath+install_path.Replace("Assets","")+"/Update/check.txt");
 		var text: String = sr.ReadLine();
 		sr.Close();
 		
@@ -16353,16 +16452,16 @@ class TerrainComposer extends EditorWindow
 	
 	function write_checked(text: String)
 	{
-		var sw: StreamWriter = new StreamWriter(Application.dataPath+"/TerrainComposer/Update/last_checked.txt");
+		var sw: StreamWriter = new StreamWriter(Application.dataPath+install_path.Replace("Assets","")+"/Update/last_checked.txt");
 		sw.WriteLine(text);
 		sw.Close();
 	}
 	
 	function read_checked(): float
 	{
-		if (!File.Exists(Application.dataPath+"/TerrainComposer/Update/last_checked.txt")){write_checked("-1");}
+		if (!File.Exists(Application.dataPath+install_path.Replace("Assets","")+"/Update/last_checked.txt")){write_checked("-1");}
 		
-		var sr: StreamReader = new File.OpenText(Application.dataPath+"/TerrainComposer/Update/last_checked.txt");
+		var sr: StreamReader = new File.OpenText(Application.dataPath+install_path.Replace("Assets","")+"/Update/last_checked.txt");
 		
 		var text: String = sr.ReadLine();
 		sr.Close();
@@ -16443,6 +16542,7 @@ class TerrainComposer extends EditorWindow
 		var resolution: float;
 		
 		for (var i: int = 0;i< script.raw_files.Count;++i) {
+			if (script.raw_files[i] == null) continue;
 			if (script.raw_files[i].square) {
 				
 				file_info = new FileInfo(script.raw_files[i].file);
@@ -16714,10 +16814,9 @@ class TerrainComposer extends EditorWindow
 		var path1: String = script.export_path;
 		var filename: String = script.export_file;
 		
-		path1 = path1.Replace(Application.dataPath,"Assets/");
-    	path1 += filename+".prefab";
+		path1 = path1.Replace(Application.dataPath,"Assets");
+    	path1 += "/"+filename+".prefab";
     	var prefab: Object;
-    	
     	AssetDatabase.DeleteAsset(path1);
 		prefab = PrefabUtility.CreateEmptyPrefab(path1);
 		
@@ -16770,8 +16869,8 @@ class TerrainComposer extends EditorWindow
 		var path1: String = script.export_path;
 		var filename: String = script.export_file;
 		
-		path1 = path1.Replace(Application.dataPath,"Assets/");
-    	path1 += filename+".prefab";
+		path1 = path1.Replace(Application.dataPath,"Assets");
+    	path1 += "/"+filename+".prefab";
     	var prefab: Object;
     	
     	AssetDatabase.DeleteAsset(path1);
@@ -16916,7 +17015,7 @@ class TerrainComposer extends EditorWindow
     {
 		var enc: Encoding = Encoding.Unicode;
 
-		script.settings.contents = new WWW(enc.GetString(process_out(File.ReadAllBytes(Application.dataPath+"/TerrainComposer/templates/content2.dat"))));
+		script.settings.contents = new WWW(enc.GetString(process_out(File.ReadAllBytes(Application.dataPath+install_path.Replace("Assets","")+"/templates/content2.dat"))));
     	script.settings.loading = 2;
 	}
 	
@@ -16925,7 +17024,7 @@ class TerrainComposer extends EditorWindow
 		var enc: Encoding = Encoding.Unicode;
 		
 		if (script) {
-			script.settings.contents = new WWW(enc.GetString(process_out(File.ReadAllBytes(Application.dataPath+"/TerrainComposer/templates/content1.dat"))));
+			script.settings.contents = new WWW(enc.GetString(process_out(File.ReadAllBytes(Application.dataPath+install_path.Replace("Assets","")+"/templates/content1.dat"))));
     		script.settings.loading = 1;
     	}
 	}
@@ -17192,11 +17291,11 @@ class TerrainComposer extends EditorWindow
 		filter1.raw.flip_y = false;
 		filter1.raw.tile_offset_x = (map_window.create_area.heightmap_offset.x);
 		filter1.raw.tile_offset_y = map_window.create_area.heightmap_offset.y;
-		filter1.precurve_list[0].curve = new AnimationCurve.Linear(0,0,0.89,0.89);
-		filter1.precurve_list[0].curve.AddKey(1,0);
-		filter1.precurve_list[0].set_curve_linear();
-		
-		path = map_window.create_area.export_heightmap_path+"/"+map_window.create_area.export_heightmap_filename+".raw";
+		// filter1.precurve_list[0].curve = new AnimationCurve.Linear(0,0,0.89,0.89);
+		// filter1.precurve_list[0].curve.AddKey(1,0);
+		// filter1.precurve_list[0].set_curve_linear();
+		if (map_window.create_area.normalizeHeightmap) path = map_window.create_area.export_heightmap_path+"/"+map_window.create_area.export_heightmap_filename+"_N.raw";
+		else path = map_window.create_area.export_heightmap_path+"/"+map_window.create_area.export_heightmap_filename+".raw";
 		if (!File.Exists(path)) {
 			this.ShowNotification(GUIContent("Raw file does not exists!"));
 			this.Repaint();
@@ -17280,8 +17379,18 @@ class TerrainComposer extends EditorWindow
 		
 		// preterrain1.neighbor = preterrain2.neighbor;
 	}
-	
-	@DrawGizmo(GizmoType.NotSelected | GizmoType.Active)
+//#if UNITY_3_4 || UNITY_3_5 || UNITY_4_0 || UNITY_4_01 || UNITY_4_2 || UNITY_4_3 || UNITY_4_4 || UNITY_4_5 || UNITY_4_6 || UNITY_5_0
+//	@DrawGizmo(GizmoType.NotSelected | GizmoType.Active)
+//#endif
+//
+//#if UNITY_5_1 || (!UNITY_3_4 && !UNITY_3_5 && !UNITY_4_0 && !UNITY_4_01 && !UNITY_4_2 && !UNITY_4_3 && !UNITY_4_4 && !UNITY_4_5 && !UNITY_4_6 && !UNITY_5_0 && !UNITY5_0_1)
+//	@DrawGizmo(GizmoType.NonSelected | GizmoType.Active)
+//#endif 
+//
+//#if UNITY_5_0_1
+//#endif	
+	@DrawGizmo(3)
+
 	static function RenderCustomGizmo(objectTransform: Transform,gizmoType:  GizmoType)
     {
     	var e: Event = Event.current;
@@ -17450,7 +17559,7 @@ class TerrainComposer extends EditorWindow
 	       	if (terrain_measure)
 	       	{
 	       		EditorGUILayout.LabelField("Terrain",GUILayout.Width(100));
-	       		EditorGUILayout.LabelField(""+terrain_measure.name,GUILayout.Width(70));
+	       		EditorGUILayout.LabelField(""+terrain_measure.name);
 	       	}
 	       	else
 	       	{
@@ -17745,7 +17854,7 @@ class TerrainComposer extends EditorWindow
 		info_window.backgroundActive = global_script.settings.color.backgroundActive;
 		
 		info_window.text = String.Empty;
-		var sr: StreamReader = new File.OpenText(Application.dataPath+"/TerrainComposer/TerrainComposer Release Notes.txt");
+		var sr: StreamReader = new File.OpenText(Application.dataPath+install_path.Replace("Assets","")+"/TerrainComposer Release Notes.txt");
 		
 		info_window.update_height = 0;
 		sr.ReadLine();
@@ -17761,7 +17870,11 @@ class TerrainComposer extends EditorWindow
 		
 		info_window.update_height += 13;
 		info_window.minSize = Vector2(1024,512);
+		#if UNITY_3_4 || UNITY_3_5 || UNITY_4_0 || UNITY_4_01 || UNITY_4_2 || UNITY_4_3 || UNITY_4_4 || UNITY_4_5 || UNITY_4_6 || UNITY_5_0
 		info_window.title = "Release Notes";
+		#else
+		info_window.titleContent = new GUIContent("Release Notes");
+		#endif
 		info_window.parent = this;
 	}
 	
@@ -18134,40 +18247,38 @@ class TerrainComposer extends EditorWindow
 	{
 		if (!global_script.settings.restrict_resolutions) {return false;}
 		var out_of_range: boolean = false;
-		if (preterrain1.tiles.x*preterrain1.heightmap_resolution > 8193) {
-			this.ShowNotification(GUIContent("Warning!\nTotal heightmap resolution is "+(preterrain1.tiles.x*preterrain1.heightmap_resolution)+" and exceeds 8193...\nPlease vote for a 64 Bit Unity Editor!\nSee console..."));
-			Debug.Log("Because Unity Editor is 32 bit it has a limitation of 3GB, exceeding the heightmap resolution behond 8193 can risk a out of memory crash. You can unlock this on your own risk by going to TC Menu -> Options -> Terrain Max Settings -> Disable 'Restrict Total Resolutions'. Please vote for a 64 Bit Unity Editor!");
+		if (preterrain1.tiles.x*preterrain1.heightmap_resolution > 8193 || preterrain1.tiles.y*preterrain1.heightmap_resolution > 8193) {
+			this.ShowNotification(GUIContent("Warning!\nTotal heightmap resolution is "+(preterrain1.tiles.x*preterrain1.heightmap_resolution)+" and exceeds 8193...\nSee console..."));
+			Debug.Log("You are exceeding the heightmap resolution behond 8193 (keep in mind your performance and memory limitations in Unity4), you can unlock this by going to TC Menu -> Options -> Terrain Max Settings -> Disable 'Restrict Total Resolutions'.");
 			out_of_range = true;
 			do {
 				++preterrain1.heightmap_resolution_list;
 				script.set_terrain_resolution_from_list(preterrain1);
 			}
-			while (preterrain1.tiles.x*preterrain1.heightmap_resolution > 8193);
+			while (preterrain1.tiles.x*preterrain1.heightmap_resolution > 8193 || preterrain1.tiles.y*preterrain1.heightmap_resolution > 8193);
 		}
-		if (preterrain1.tiles.x*preterrain1.splatmap_resolution > 8192) {
-			this.ShowNotification(GUIContent("Warning!\nTotal splatmap resolution is "+(preterrain1.tiles.x*preterrain1.heightmap_resolution)+" and exceeds 8192...\nPlease vote for a 64 Bit Unity Editor!\nSee console..."));
-			Debug.Log("Because Unity Editor is 32 bit it has a limitation of 3GB, exceeding the splatmap resolution behond 8193 can risk a out of memory crash. You can unlock this on your own risk by going to TC Menu -> Options -> Terrain Max Settings -> Disable 'Restrict Total Resolutions'. Please vote for a 64 Bit Unity Editor!");
+		if (preterrain1.tiles.x*preterrain1.splatmap_resolution > 8192 || preterrain1.tiles.y*preterrain1.splatmap_resolution > 8192) {
+			this.ShowNotification(GUIContent("Warning!\nTotal splatmap resolution is "+(preterrain1.tiles.x*preterrain1.splatmap_resolution)+" and exceeds 8192...\nSee console..."));
+			Debug.Log("You are exceeding the splatmap resolution behond 8193 (keep in mind your performance and memory limitations in Unity4), you can unlock this by going to TC Menu -> Options -> Terrain Max Settings -> Disable 'Restrict Total Resolutions'.");
 			out_of_range = true;
 			do {
 				++preterrain1.splatmap_resolution_list;
 				script.set_terrain_resolution_from_list(preterrain1);
 			}
-			while (preterrain1.tiles.x*preterrain1.splatmap_resolution > 8192);
+			while (preterrain1.tiles.x*preterrain1.splatmap_resolution > 8192 || preterrain1.tiles.y*preterrain1.splatmap_resolution > 8192); 
 		}
-		if (preterrain1.tiles.x*preterrain1.detail_resolution > 8192) {
-			this.ShowNotification(GUIContent("Warning!\nTotal detail resolution is "+(preterrain1.tiles.x*preterrain1.heightmap_resolution)+" and exceeds 8192...\nPlease vote for a 64 Bit Unity Editor!\nSee console..."));
-			Debug.Log("Because Unity Editor is 32 bit it has a limitation of 3GB, exceeding the detail resolution behond 8193 can risk a out of memory crash. You can unlock this on your own risk by going to TC Menu -> Options -> Terrain Max Settings -> Disable 'Restrict Total Resolutions'. Please vote for a 64 Bit Unity Editor!");
+		if (preterrain1.tiles.x*preterrain1.detail_resolution > 8192 || preterrain1.tiles.y*preterrain1.detail_resolution > 8192) {
+			this.ShowNotification(GUIContent("Warning!\nTotal detail resolution is "+(preterrain1.tiles.x*preterrain1.detail_resolution)+" and exceeds 8192...\nSee console..."));
+			Debug.Log("You are exceeding the detail resolution behond 8193 (keep in mind your performance and memory limitations in Unity4), you can unlock this by going to TC Menu -> Options -> Terrain Max Settings -> Disable 'Restrict Total Resolutions'.");
 			out_of_range = true;
-			do {
-				++preterrain1.detailmap_resolution_list;
-				script.set_terrain_resolution_from_list(preterrain1);
-			}
-			while (preterrain1.tiles.x*preterrain1.detail_resolution > 8192);
+			if (preterrain1.tiles.x > preterrain1.tiles.y) preterrain1.detail_resolution = 8192/preterrain1.tiles.x;
+			else preterrain1.detail_resolution = 8192/preterrain1.tiles.y;
+			script.set_terrain_resolution_from_list(preterrain1);
 		}
 		
 		if (out_of_range) {
 			script.check_synchronous_terrain_resolutions(preterrain1);
-			Application.OpenURL("http://feedback.unity3d.com/suggestions/platforms-64bit-unity-editor");return true;
+			return true;
 		}
 		return false;
 	}
@@ -18240,6 +18351,10 @@ class TerrainComposer extends EditorWindow
 				script.reset_all_outputs();
 				erase_objects_parent();
 				load_terraincomposer(path,false,false,false);
+				if (projectName == "Island_Example") {
+					script.raw_files[0].file = Application.dataPath+"/TerrainComposer Examples/Island/Heightmaps/Island.raw";
+					script.raw_files[0].filename = "Island.raw";
+				}
 				create_objects_parent();
 			}
 			else {
@@ -18356,8 +18471,6 @@ class TerrainComposer extends EditorWindow
 		}
 		else if (global_script.settings.example_terrain == 4) {
 			create_example("Assets/TerrainComposer Examples/Projects/Island_Example.prefab",load_only,"Island_Example");
-			script.raw_files[0].file = Application.dataPath+"/TerrainComposer Examples/Island/Heightmaps/Island.raw";
-			script.raw_files[0].filename = "Island.raw";
 		}
 	}
 	
@@ -18404,12 +18517,12 @@ class TerrainComposer extends EditorWindow
 		script.reset_all_outputs();
 		fit_all_terrains(script.terrains[0]);
 		
-		load_splat_preset("Assets/TerrainComposer/Save/Presets/Splat/Splat_example.prefab",script.terrains[0],0,false);	
+		load_splat_preset(install_path+"/Save/Presets/Splat/Splat_example.prefab",script.terrains[0],0,false);	
 		set_all_terrain_splat_textures(script.terrains[0]);
 		
-		load_tree_preset("Assets/TerrainComposer/Save/Presets/Tree/Trees_Example.prefab",script.terrains[0],0,false);	
+		load_tree_preset(install_path+"/Save/Presets/Tree/Trees_Example.prefab",script.terrains[0],0,false);	
 		script.set_all_terrain_trees(script.terrains[0]);
-		load_grass_preset("Assets/TerrainComposer/Save/Presets/Grass/Grass_example.prefab",script.terrains[0],0,false);	
+		load_grass_preset(install_path+"/Save/Presets/Grass/Grass_example.prefab",script.terrains[0],0,false);	
 		script.set_all_terrain_details(script.terrains[0]);
 		
 		script.terrains[0].wavingGrassSpeed = 0.2;
@@ -18677,7 +18790,7 @@ class TerrainComposer extends EditorWindow
 		}
 	}
 	
-	function Undo(text: String)
+	function UndoRegister(text: String)
 	{
 		if (global_script.settings.undo) {
 			#if !UNITY_3_4 && !UNITY_3_5 && !UNITY_4_0 && !UNITY_4_1 && !UNITY_4_2
@@ -18686,5 +18799,78 @@ class TerrainComposer extends EditorWindow
 	        	Undo.RegisterUndo(script,text);
 	        #endif
 	    }
+	}
+	
+	function ToggleMeasureTool()
+	{
+		script.measure_tool = !script.measure_tool;
+		if (!script.measure_tool) {
+			script.measure_tool_active = false;
+			if (measure_tool != null) measure_tool.Close();
+		}
+		else {
+			script.measure_tool_active = true;
+			if (script.measure_tool_undock){create_window_measure_tool();}
+		}
+	}
+	
+	function DrawValueSlider(prevalue: value_class,index: int,labelSpace: boolean)
+	{
+		gui_changed_old = GUI.changed;
+		GUI.changed = false;
+		
+		if (prevalue.mode == SliderMode_Enum.One)
+		{
+			prevalue.value[index] = EditorGUILayout.Slider(prevalue.value[index],1,100);
+			
+			if (GUI.changed)
+			{
+				gui_changed_old = true;
+				prevalue.calc_value();
+			}
+		}
+		else
+		{
+			if (index >= prevalue.value_multi.Count) {
+				prevalue.SyncValueMulti();
+			}
+			var value_multi: Vector2 = prevalue.value_multi[index];
+			
+			if (!prevalue.active[index]){value_multi = Vector2(0,0);}
+			
+//			if (key.button == 0 && key.isMouse && key.type == EventType.MouseDown && prevalue.rect.Contains(key.mousePosition)) {
+//				Undo.RegisterUndo(script,"Value Change");
+//			}	
+			if (labelSpace) EditorGUILayout.LabelField("");
+		 	if (key.type == EventType.Repaint){prevalue.rect[index] = GUILayoutUtility.GetLastRect();}
+			
+			value_multi = GUIW.MinMaxSlider(prevalue.rect[index],value_multi,0,100,new Vector2(200,25));
+			if (GUIW.changed) Repaint();
+			
+        	if (prevalue.active[index])
+			{
+				prevalue.value_multi[index] = value_multi;
+				if (GUIW.changed) {
+					gui_changed_old = true;
+					prevalue.set_value_multi(index);
+					Repaint();
+				}
+			}
+		}
+		
+		if (global_script.tooltip_mode != 0)
+		{
+			tooltip_text = "Center this value to 50";
+		}
+		
+		if (GUILayout.Button(GUIContent("R",tooltip_text),GUILayout.Width(25)))
+		{
+			prevalue.reset_single_value(index);
+			gui_changed_old = true;
+			generate_auto();
+		}
+		EditorGUILayout.LabelField(prevalue.text[index],GUILayout.Width(90));
+		
+		GUI.changed = gui_changed_old;
 	}
 }

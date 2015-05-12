@@ -497,6 +497,7 @@ class detail_class
 // map class
 class map_class
 {	var type: map_type_enum;
+	var timeOut: int = 4;
 	var active: boolean = true;
 	var button_parameters: boolean = true;
 	var button_image_editor: boolean = true;
@@ -511,6 +512,7 @@ class map_class
 	var alpha: float = 0.65;
 	var backgroundColor: Color; 
 	var titleColor: Color;
+	var errorColor: Color = new Color(127.0/255.0,127.0/255.0,127.0/255.0);
 	var region_popup_edit: boolean = false;
 	var area_popup_edit: boolean = false;
 	var disable_region_popup_edit: boolean = false;
@@ -591,6 +593,9 @@ class map_class
 	
 	var warnings: boolean = true;
 	var track_tile: boolean = true;
+	
+	var snap: boolean = false;
+	var snapValue: float = 0.1;
 	
 	function map_class()
 	{
@@ -811,7 +816,7 @@ class tile_class
 
 // map area class
 class map_area_class
-{
+{ 
 	var name: String = "Untitled";
 	
 	var upper_left: latlong_class = new latlong_class();
@@ -819,6 +824,8 @@ class map_area_class
 	var center: latlong_class = new latlong_class();
 	var center_height: int;
 	var size: map_pixel_class = new map_pixel_class();
+	var normalizeHeightmap: boolean = true;
+	var normalizedHeight: float;
 	
 	var created: boolean = false;
 	// mode 0 -> Nothing
@@ -1000,7 +1007,7 @@ class preimage_edit_class
 	var y: int;
 	var frames: float;
 	var auto_speed_time: float;
-	var target_frame: float = 30;
+	private var target_frame: float = 30;
 	var time_start: float;
 	var time: float = 0;;
 	var generate: boolean = false;
@@ -1115,7 +1122,7 @@ class preimage_edit_class
 			dir = 1;	
 			count = 0;
 			
-			for (x = inputBuffer.offset.x;x < (inputBuffer.innerRect.width+inputBuffer.offset.x);++x) {
+			for (x = inputBuffer.offset.x+x1;x < (inputBuffer.innerRect.width+inputBuffer.offset.x);++x) {
 				color = GetPixelRaw(inputBuffer,x,y);
 				color3 = color;
 				
@@ -1227,15 +1234,18 @@ class preimage_edit_class
 				else if (color3[2] < 0) {color3[2] = 0;}
 				
 				SetPixelRaw (outputBuffer,x,y,color3);
+				
+				if (Time.realtimeSinceStartup-auto_speed_time > (1.0/target_frame) && multithread)
+				{
+					y1 = y;
+					x1 = (x-inputBuffer.offset.x)+1;
+					// Debug.Log(y1);
+					if (mode == 2) {time = Time.realtimeSinceStartup-time_start;}
+					// Debug.Log("mode: "+mode+", "+y1);
+					return;
+				}
 			}
-			if (Time.realtimeSinceStartup-auto_speed_time > (1.0/target_frame) && multithread)
-			{
-				y1 = y+1;
-				// Debug.Log(y1);
-				if (mode == 2) {time = Time.realtimeSinceStartup-time_start;}
-				// Debug.Log("mode: "+mode+", "+y1);
-				return;
-			}
+			x1 = 0;
 		}
 		generate = false; 
 	}
@@ -1558,7 +1568,7 @@ class latlong_class
 	}
 }
 
-class latlong_area_class
+class latlong_area_class 
 {
 	var latlong1: latlong_class = new latlong_class();
 	var latlong2: latlong_class = new latlong_class();

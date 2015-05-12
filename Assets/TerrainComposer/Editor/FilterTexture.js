@@ -50,7 +50,11 @@ class FilterTexture extends EditorWindow
 	static function ShowWindow () 
 	{
     	var window = EditorWindow.GetWindow(FilterTexture);
+    	#if UNITY_3_4 || UNITY_3_5 || UNITY_4_0 || UNITY_4_01 || UNITY_4_2 || UNITY_4_3 || UNITY_4_4 || UNITY_4_5 || UNITY_4_6 || UNITY_5_0
         window.title = "Image Tools";
+        #else
+        window.titleContent = new GUIContent("Image Tools");
+        #endif
     }
     
     function OnFocus()
