@@ -1,0 +1,162 @@
+fileFormatVersion: 2
+guid: 288288d4b1323f7428f0be28384a556a
+ModelImporter:
+  serializedVersion: 18
+  fileIDToRecycleName:
+    100000: BackLeg1
+    100002: BackLeg2
+    100004: BackLeg3
+    100006: BackLeg4
+    100008: BackLeg5
+    100010: BackLeg6
+    100012: Ear1
+    100014: Ear2
+    100016: Ear3
+    100018: Ear4
+    100020: Face1
+    100022: Face2
+    100024: Face3
+    100026: Face4
+    100028: Face5
+    100030: Face6
+    100032: FrontLeg1
+    100034: FrontLeg2
+    100036: FrontLeg3
+    100038: FrontLeg4
+    100040: FrontLeg5
+    100042: FrontLeg6
+    100044: Piggy
+    100046: //RootNode
+    100048: polySurface202
+    100050: polySurface203
+    100052: Root
+    100054: Tail1
+    100056: Tail2
+    100058: Piggy_
+    400000: BackLeg1
+    400002: BackLeg2
+    400004: BackLeg3
+    400006: BackLeg4
+    400008: BackLeg5
+    400010: BackLeg6
+    400012: Ear1
+    400014: Ear2
+    400016: Ear3
+    400018: Ear4
+    400020: Face1
+    400022: Face2
+    400024: Face3
+    400026: Face4
+    400028: Face5
+    400030: Face6
+    400032: FrontLeg1
+    400034: FrontLeg2
+    400036: FrontLeg3
+    400038: FrontLeg4
+    400040: FrontLeg5
+    400042: FrontLeg6
+    400044: Piggy
+    400046: //RootNode
+    400048: polySurface202
+    400050: polySurface203
+    400052: Root
+    400054: Tail1
+    400056: Tail2
+    400058: Piggy_
+    2300000: polySurface202
+    2300002: polySurface203
+    3300000: polySurface202
+    3300002: polySurface203
+    4300000: polySurface202
+    4300002: polySurface203
+    4300004: Piggy
+    4300006: Piggy_
+    7400000: walk
+    9500000: //RootNode
+    11100000: //RootNode
+    13700000: Piggy
+    13700002: Piggy_
+  materials:
+    importMaterials: 0
+    materialName: 0
+    materialSearch: 1
+  animations:
+    legacyGenerateAnimations: 4
+    bakeSimulation: 0
+    optimizeGameObjects: 0
+    motionNodeName: 
+    animationCompression: 1
+    animationRotationError: .5
+    animationPositionError: .5
+    animationScaleError: .5
+    animationWrapMode: 2
+    extraExposedTransformPaths: []
+    clipAnimations:
+    - serializedVersion: 16
+      name: walk
+      takeName: Take 001
+      firstFrame: 1
+      lastFrame: 10
+      wrapMode: 2
+      orientationOffsetY: 0
+      level: 0
+      cycleOffset: 0
+      loop: 0
+      loopTime: 0
+      loopBlend: 0
+      loopBlendOrientation: 0
+      loopBlendPositionY: 0
+      loopBlendPositionXZ: 0
+      keepOriginalOrientation: 0
+      keepOriginalPositionY: 1
+      keepOriginalPositionXZ: 0
+      heightFromFeet: 0
+      mirror: 0
+      bodyMask: 01000000010000000100000001000000010000000100000001000000010000000100000001000000010000000100000001000000
+      curves: []
+      events: []
+      transformMask: []
+      maskType: 0
+      maskSource: {instanceID: 0}
+    isReadable: 0
+  meshes:
+    lODScreenPercentages: []
+    globalScale: .0500000007
+    meshCompression: 0
+    addColliders: 0
+    importBlendShapes: 1
+    swapUVChannels: 0
+    generateSecondaryUV: 0
+    useFileUnits: 1
+    optimizeMeshForGPU: 0
+    keepQuads: 0
+    weldVertices: 1
+    secondaryUVAngleDistortion: 8
+    secondaryUVAreaDistortion: 15.000001
+    secondaryUVHardAngle: 88
+    secondaryUVPackMargin: 4
+    useFileScale: 0
+  tangentSpace:
+    normalSmoothAngle: 180
+    splitTangentsAcrossUV: 1
+    normalImportMode: 1
+    tangentImportMode: 1
+  importAnimation: 1
+  copyAvatar: 0
+  humanDescription:
+    human: []
+    skeleton: []
+    armTwist: .5
+    foreArmTwist: .5
+    upperLegTwist: .5
+    legTwist: .5
+    armStretch: .0500000007
+    legStretch: .0500000007
+    feetSpacing: 0
+    rootMotionBoneName: 
+  lastHumanDescriptionAvatarSource: {instanceID: 0}
+  animationType: 1
+  additionalBone: 1
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
