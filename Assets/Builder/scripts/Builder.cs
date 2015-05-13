@@ -519,7 +519,7 @@ public class Builder : MonoBehaviour {
 		//GameObject newBuilding = (GameObject)Instantiate (GameObject.Find(objectName), pos, rot);
 
 		if (PhotonNetwork.isMasterClient) {
-			PhotonNetwork.Instantiate (objectName, pos, rot, 0);
+			PhotonNetwork.InstantiateSceneObject (objectName, pos, rot, 0, null);
 		}
 
 		// Add collision to the newly created item			
