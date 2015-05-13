@@ -32,6 +32,11 @@ public class Builder : MonoBehaviour {
 	private bool isFloorObject = false;
 	private bool canPlaceObject;
 
+	// Multiplayer
+	private PhotonView photonView;
+	private bool isSinglePlayer;
+
+
 
 	// Placing object info
 	// If true, will colorize object if it can be placed (ex: green / red)
@@ -69,17 +74,19 @@ public class Builder : MonoBehaviour {
 		// Init Layers
 		terrainLayer = LayerMask.NameToLayer("Terrain");
 
+		photonView = transform.GetComponent<PhotonView>();
+		isSinglePlayer = photonView == null;
+
 		//Application.targetFrameRate = 60;
 	}
 	
 	// Update is called once per frame
 	void Update () {
 
-		PhotonView pv = transform.GetComponent<PhotonView>();
-		if (pv != null && !pv.isMine) {
+		// Don't do anything if we're multiplayer and not master
+		if (!isSinglePlayer && !photonView.isMine) {
 			return;
 		}
-			
 
 		// Always reset previous build object if it exists
 		if (prevObject != null) {
@@ -286,7 +293,7 @@ public class Builder : MonoBehaviour {
 			//LayerMask hitMask = (1 << hit.transform.gameObject.layer);
 			isFloorPosition = isFloorSnapObject(hit.transform.gameObject);
 
-			// If terrain or floow, move to vector
+			// If terrain or floor, move to vector
 			if(hitLayer == terrainLayer || hitLayer == LayerMask.NameToLayer("Floor") && !isFloorPosition) {
 
 				Vector3 objectPosition = getObjectPosition(hit, BuildObject);
@@ -333,7 +340,6 @@ public class Builder : MonoBehaviour {
 		if (Physics.Raycast(ray, out hit, MaxBuildDistance, ~obj.IgnoreLayers))
 		{
 			int hitLayer = hit.transform.gameObject.layer;
-			//LayerMask hitMask = (1 << hit.transform.gameObject.layer);
 
 			// What are we hitting
 			if(hit.transform.gameObject.layer == obj.ShowLayer) {
@@ -366,7 +372,6 @@ public class Builder : MonoBehaviour {
 	}
 
 	// Gets position of building object based on raycast, building object transform, and pivot point offset
-	// 
 	private Vector3 getObjectPosition(RaycastHit hitPoint, GameObject buildObject)
 	{
 		// Start off a hitpoint position then adjust depending on where ray hit
@@ -423,11 +428,8 @@ public class Builder : MonoBehaviour {
 			// Fire Off Any Callbacks
 			//newBuilding.SendMessage ("OnBuilt", SendMessageOptions.DontRequireReceiver);    
 
-
-			// Network Enbled
-			PhotonView pv = transform.GetComponent<PhotonView>();
 			// Check if single player
-			if(pv == null) {
+			if(isSinglePlayer) {
 				if(obj.ObjectOnBuild) {
 					PlaceObject(obj.ObjectOnBuild.name, BuildObject.transform.position, BuildObject.transform.rotation);
 				}
@@ -439,48 +441,92 @@ public class Builder : MonoBehaviour {
 			else {
 				if(obj.ObjectOnBuild) {
 					
-					pv.RPC("PlaceObject", PhotonTargets.AllBuffered, obj.ObjectOnBuild.name, BuildObject.transform.position, BuildObject.transform.rotation);
-					//newBuilding = GameObject.Instantiate (obj.ObjectOnBuild, BuildObject.transform.position, BuildObject.transform.rotation);
+					photonView.RPC("PlaceObject", PhotonTargets.AllBuffered, obj.ObjectOnBuild.name, BuildObject.transform.position, BuildObject.transform.rotation);
 				}
 				else {
-					pv.RPC("PlaceObject", PhotonTargets.AllBuffered, initialBuilding.name, BuildObject.transform.position, BuildObject.transform.rotation);
-					//newBuilding = GameObject.Instantiate (initialBuilding, BuildObject.transform.position, BuildObject.transform.rotation);
+					photonView.RPC("PlaceObject", PhotonTargets.AllBuffered, initialBuilding.name, BuildObject.transform.position, BuildObject.transform.rotation);
 				}
 			}
 		} 
 
 		else {
 			// Doing a wall, pillar, stairs, etc
-			Debug.LogWarning("Wall Build");
-			Debug.LogWarning(prevObject.name);
-			// Instantiate a new item in place if specified
-			BuildObject obj = BuildObject.GetComponent<BuildObject> ();
-			if(obj != null && obj.ObjectOnBuild != null) {
-				Debug.LogWarning(prevObject.name);
-				GameObject newBuilding = (GameObject)Instantiate (obj.ObjectOnBuild, prevObject.transform.position, prevObject.transform.rotation);
+
+			if(isSinglePlayer) {
+				// Instantiate a new item in place if specified
+				BuildObject obj = BuildObject.GetComponent<BuildObject> ();
+				if(obj != null && obj.ObjectOnBuild != null) {
+					Debug.LogWarning(prevObject.name);
+					GameObject newBuilding = (GameObject)Instantiate (obj.ObjectOnBuild, prevObject.transform.position, prevObject.transform.rotation);
+				}
+				// Otherwise add a texture and enable renderer to item we are looking at
+				else if(prevObject != null) {
+					prevObject.GetComponent<Renderer>().material = prevObjectMat;
+					prevObject.GetComponent<Renderer>().enabled = true;
+					prevObject.GetComponent<BoxCollider>().isTrigger = false;
+					
+					prevObject = null;
+				}
 			}
-			// Otherwise add a texture and enable renderer to item we are looking at
-			else if(prevObject != null) {
-				prevObject.GetComponent<Renderer>().material = prevObjectMat;
-				prevObject.GetComponent<Renderer>().enabled = true;
-				prevObject.GetComponent<BoxCollider>().isTrigger = false;
-				
-				prevObject = null;
+			else {
+
+				PhotonView pv = prevObject.GetComponent<PhotonView>();
+				if(pv == null) {
+					pv = prevObject.GetComponentInParent<PhotonView>();
+				}
+
+				int photonId = pv.viewID;
+				string pieceName = prevObject.name;
+
+				// Instantiate a new item in place if specified
+				BuildObject obj = BuildObject.GetComponent<BuildObject> ();
+				if(obj != null && obj.ObjectOnBuild != null) {
+
+					PlaceObject(obj.ObjectOnBuild.name, prevObject.transform.position, prevObject.transform.rotation);
+					// Todo : Network Instantiate pieces
+					//GameObject newBuilding = (GameObject)Instantiate (obj.ObjectOnBuild, prevObject.transform.position, prevObject.transform.rotation);
+				}
+				// Otherwise add a texture and enable renderer to item we are looking at
+				else if(prevObject != null) {
+					ShowWall (photonId, pieceName);
+
+					// Reset object locally
+					prevObject = null;
+
+				}
 			}
 		}
 	}
 
 	[RPC]
+	public void ShowWall(int viewId, string objectName) {
+
+		GameObject thePiece = PhotonView.Find (viewId).gameObject;
+		if (thePiece != null) {
+			thePiece = thePiece.transform.FindChild(objectName).gameObject;
+		}
+
+		// Show the game piece
+		thePiece.GetComponent<Renderer>().material = prevObjectMat;
+		thePiece.GetComponent<Renderer>().enabled = true;
+		thePiece.GetComponent<BoxCollider>().isTrigger = false;
+	}
+	
+	[RPC]
 	public void PlaceObject(string objectName, Vector3 pos, Quaternion rot) {
 
 		// Place object in world
-		GameObject newBuilding = (GameObject)Instantiate (GameObject.Find(objectName), pos, rot);
+		//GameObject newBuilding = (GameObject)Instantiate (GameObject.Find(objectName), pos, rot);
+
+		if (PhotonNetwork.isMasterClient) {
+			PhotonNetwork.Instantiate (objectName, pos, rot, 0);
+		}
 
 		// Add collision to the newly created item			
-		if (newBuilding != null) {
-			Debug.Log ("placed");
-			AddCollider(newBuilding);
-		}
+//		if (newBuilding != null) {
+//			Debug.Log ("placed");
+//			AddCollider(newBuilding);
+//		}
 	}
 
 	/*
